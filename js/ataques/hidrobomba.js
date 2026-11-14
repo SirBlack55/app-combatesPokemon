@@ -1,6 +1,6 @@
 // Hidrobomba (hydro-pump): cañón de agua.
 CUSTOM['hydro-pump'] = {
-    mv: { cu: 'hydro-pump' }, fallback: () => ({ n: 'Hidrobomba', key: 'hydro-pump', p: 110, cd: 8.4, c: 1, r: 300, u: 1, t: 'water', cat: 'spe', acc: 80, sty: 'orb', cu: 'hydro-pump' }),
+    mv: { cu: 'hydro-pump' ,est:'distancia'}, fallback: () => ({ n: 'Hidrobomba', key: 'hydro-pump', p: 110, cd: 8.4, c: 1, r: 300, u: 1, t: 'water', cat: 'spe', acc: 80, sty: 'orb', cu: 'hydro-pump' }),
     start(m, tg, p) { m.sc = { id: 'hydro-pump', t: 0 }; bn = { s: p.n, c: '#7dd3fc', l: 1.5 }; cz = .05; ents.push({ k: 'u', cu: 'hydro-pump', o: m, tg, cat: p.cat, dm: p.p / 7, t: 0, tk: 0, n: 0, life: 1.95, delay: 0 }) },
     run(m, dt, s) { const tg = m.tg; if (tg) m.a = turn(m.a, Math.atan2(tg.y - m.y, tg.x - m.x), dt * 10); m.sqz = s.t < .55 ? .45 * s.t / .55 : Math.max(0, .45 - (s.t - .55) * 3); return s.t >= 1.85 },
     eup(e, dt) {

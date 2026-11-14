@@ -1,7 +1,7 @@
 // Cometa Draco (draco-meteor): 5 meteoritos de roca ardiente que caen sobre el rival y se estrellan.
 CUSTOM['draco-meteor']={
  // p:130 y c:1 → el conversor multiplicaba el poder por 1.8 (llegaba 234) y c:10 no se usa aquí
- mv:{cu:'draco-meteor',r:420,tk:0,p:130,c:1},
+ mv:{cu:'draco-meteor',r:420,tk:0,p:130,c:1,est:'distancia'},
  fallback:()=>({n:'Cometa Draco',key:'draco-meteor',p:130,cd:8.4,c:1,r:420,u:1,t:'dragon',cat:'spe',acc:90,sty:'beam',cu:'draco-meteor'}),
 
  start(m,tg,p){

@@ -1,6 +1,6 @@
 // Rayo (thunderbolt): carga -> descarga en zigzag con ramas -> destello.
 CUSTOM['thunderbolt']={
- mv:{cu:'thunderbolt',r:360,tk:0},
+ mv:{cu:'thunderbolt',r:360,tk:0,est:'distancia'},
  fallback:()=>({n:'Rayo',key:'thunderbolt',p:90,cd:(1+90/45)*1.4,c:1,r:360,u:0,t:'elec',cat:'spe',acc:100,sty:'beam',cu:'thunderbolt'}),
 
  start(m,tg,p){

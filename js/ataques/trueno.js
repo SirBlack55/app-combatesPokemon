@@ -1,6 +1,6 @@
 // Trueno (thunder): carga -> nube de tormenta sobre el rival -> descarga -> onda expansiva.
 CUSTOM['thunder']={
- mv:{cu:'thunder',r:420,tk:0},
+ mv:{cu:'thunder',r:420,tk:0,est:'distancia'},
  fallback:()=>({n:'Trueno',key:'thunder',p:110,cd:8.4,c:1,r:420,u:0,t:'elec',cat:'spe',acc:70,sty:'hit',cu:'thunder'}),
 
  start(m,tg,p){

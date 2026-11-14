@@ -1,5 +1,5 @@
 // Vuelo (fly): sube al cielo y cae en picado sobre el rival.
-CUSTOM['fly']={mv:{r:360,tk:0,cu:'fly'},fallback:()=>({n:'Vuelo',key:'fly',p:90,cd:(1+90/45)*1.4,c:1,r:360,u:0,t:'flying',cat:'phy',acc:95,sty:'hit',cu:'fly'}),
+CUSTOM['fly']={mv:{r:360,tk:0,cu:'fly',est:'contacto'},fallback:()=>({n:'Vuelo',key:'fly',p:90,cd:(1+90/45)*1.4,c:1,r:360,u:0,t:'flying',cat:'phy',acc:95,sty:'hit',cu:'fly'}),
   start(m,tg,p){m.sc={id:'fly',t:0,p,x0:m.x}},
   run(m,dt,s){const tg=m.tg,t=s.t;if(!tg||tg.dead){return true}
    if(t<.2){m.sqz=t/.2;m.a=turn(m.a,Math.atan2(tg.y-m.y,tg.x-m.x),dt*10);if(!s.f0){s.f0=1;feathers(m.x,m.y-10,12,130)}return false}

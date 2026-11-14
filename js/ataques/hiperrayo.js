@@ -1,6 +1,6 @@
 // Hiperrayo (hyper-beam): carga -> rayo cónico -> explosión.
 CUSTOM['hyper-beam']={
- mv:{cu:'hyper-beam',r:420,tk:0},
+ mv:{cu:'hyper-beam',r:420,tk:0,est:'distancia'},
  fallback:()=>({n:'Hiperrayo',key:'hyper-beam',p:150,cd:10,c:1,r:420,u:0,t:'normal',cat:'spe',acc:90,sty:'beam',cu:'hyper-beam'}),
 
  start(m,tg,p){

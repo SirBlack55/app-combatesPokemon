@@ -1,6 +1,6 @@
 // Gigaimpacto (giga-impact): aura Super Saiyan -> embestida con haz de energía -> explosión amarilla con grietas -> agotamiento.
 CUSTOM['giga-impact']={
- mv:{cu:'giga-impact',r:360,tk:0},
+ mv:{cu:'giga-impact',r:360,tk:0,est:'contacto'},
  fallback:()=>({n:'Gigaimpacto',key:'giga-impact',p:150,cd:10,c:1,r:360,u:0,t:'normal',cat:'phy',acc:90,sty:'hit',cu:'giga-impact'}),
 
  start(m,tg,p){
