@@ -1,5 +1,5 @@
 // MODO GACHA (pantallas): perfil, menú, banners (banner inicial con reroll), box y partida.
-// Necesita: guardado.js, misiones.js, celebraciones.js + celebraciones-datos.js, banners-normales.js, banners.js + banners-datos.js, rarezas.js, evoluciones-datos.js, generos.js, experiencia.js + experiencia-datos.js, fusion.js, arquetipos.js y pokeapi.js (API, SPR, jf).
+// Necesita: guardado.js, eventos.js + eventos-datos.js + eventos-pantallas.js, misiones.js, celebraciones.js + celebraciones-datos.js, banners-normales.js, banners.js + banners-datos.js, rarezas.js, evoluciones-datos.js, generos.js, experiencia.js + experiencia-datos.js, fusion.js, arquetipos.js y pokeapi.js (API, SPR, jf).
 // Es una primera versión sencilla: las opciones sin hacer salen como "Próximamente".
 const Gacha=(()=>{
   const RC={N:'#94a3b8',R:'#4ade80',SR:'#60a5fa',SSR:'#c084fc',UR:'#fbbf24',LR:'#f472b6'},ORD=['N','R','SR','SSR','UR','LR'];
@@ -44,7 +44,7 @@ const Gacha=(()=>{
 
   // Kit de 4 ataques de una carta: se calcula con especie + arquetipo (no se guarda en la partida).
   // El resultado se guarda en caché del navegador, porque la 1ª vez hay que descargar los ataques de la especie.
-  const KC='kits-cartas-v1',KE='kits-especies-v1';
+  const KC='kits-cartas-v2',KE='kits-especies-v1';
   let KITS={};try{KITS=JSON.parse(localStorage.getItem(KC)||'{}')}catch(_){}
   const CATN={phy:'Físico',spe:'Especial',sta:'Estado'},ESTN={contacto:'Contacto',distancia:'Distancia',area:'Área',utilidad:'Utilidad'};
   const TIPN={normal:'Normal',fire:'Fuego',water:'Agua',elec:'Eléctrico',leaf:'Planta',ice:'Hielo',fighting:'Lucha',poison:'Veneno',
@@ -57,15 +57,18 @@ const Gacha=(()=>{
       moves:p.moves.map(m=>m.move.name)};
   }
   async function kitDe(c,prog){
-    const k=c.especieId+'/'+c.arquetipo;
+    const k=c.especieId+'/'+(c.arquetipo||'auto');
     if(KITS[k])return KITS[k];
     const e=await datosEsp(c.especieId),movs=[];
     for(let i=0;i<e.moves.length;i+=9){
       movs.push(...await Promise.all(e.moves.slice(i,i+9).map(n=>mvData({n,u:API+'move/'+n+'/'}).catch(()=>null))));
       if(prog)prog(Math.min(e.moves.length,i+9),e.moves.length);
     }
-    const kit=generarKit(e,c.arquetipo,movs.filter(Boolean))
-      .map(m=>({key:m.key,n:m.n,t:m.t,cat:m.cat,p:m.p||0,est:estiloAtaque(m)}));
+    const ms=movs.filter(Boolean);let arq=c.arquetipo;   // sin arquetipo (rivales de eventos): el primer viable
+    if(!arq)arq=arquetiposDistintos(e,ms)[0]||arquetiposViables(e,ms)[0]||'fisico';
+    let kit=generarKit(e,arq,ms);
+    if(!kit.length)kit=ms.filter(m=>m.cat!=='sta'&&m.p>0).sort((a,b)=>b.p-a.p).slice(0,4);
+    kit=kit.map(m=>({...m,est:estiloAtaque(m)}));   // ataque completo (el combate necesita cd, alcance...)
     KITS[k]=kit;try{localStorage.setItem(KC,JSON.stringify(KITS))}catch(_){}
     return kit;
   }
@@ -166,7 +169,7 @@ const Gacha=(()=>{
     const pend=typeof Misiones!=='undefined'?Misiones.pendientes(partida,ctxM()):0;
     const celAct=celOk()?Celebraciones.activas(CELEBRACIONES,partida,hoyJ()):[];
     const textoCel=celAct.length?celAct.map(c=>c.nombre.replace('Celebración de ','')+' · '+Celebraciones.estado(c,partida,hoyJ()).quedan+' d').join(' + '):'Próximamente';
-    const op=[['🎉','Celebraciones',textoCel,celOk()?pantallaCelebraciones:null],['🎴','Banners','Invocaciones',pantallaBanners],['🗡️','Eventos','Próximamente',null],
+    const op=[['🎉','Celebraciones',textoCel,celOk()?pantallaCelebraciones:null],['🎴','Banners','Invocaciones',pantallaBanners],['🗡️','Eventos','Farmeo, historia y desafíos',eventosOk()?pantallaEventos:null],
       ['📦','Box',partida.box.length+' cartas',pantallaBox],['🛒','Tienda','Próximamente',null],
       ['🏋️','Entrenamiento','Desde el detalle de cada carta',pantallaBox],['📜','Misiones',pend?`🔴 ${pend} por reclamar`:'Diarias y logros',typeof Misiones!=='undefined'?pantallaMisiones:null],
       ['💾','Partida','Perfil y copia de seguridad',pantallaPartida]];
@@ -217,6 +220,15 @@ const Gacha=(()=>{
     };
     seccion('📅 Diarias <small style="opacity:.7">(se reinician cada día a las 00:00 de tu dispositivo)</small>',Misiones.DIARIAS);
     seccion('🏆 Generales <small style="opacity:.7">(se hacen una sola vez)</small>',Misiones.GENERALES);
+  }
+
+  // ---------- Eventos (pantallas en eventos-pantallas.js) ----------
+  let EVG=null;
+  const eventosOk=()=>typeof GachaEventos!=='undefined'&&typeof EVENTOS!=='undefined'&&typeof Eventos!=='undefined';
+  function pantallaEventos(){
+    EVG=EVG||GachaEventos.crear({h,esc,limpiar,cabecera,guardar,volver:menu,carta,nombreEs,datosEsp,kitDe,premioHtml,reg,
+      partida:()=>partida,cont:()=>cont,hoy:hoyJ,NAT:Guardado.NATURALEZAS});
+    EVG.abrir();
   }
 
   function pantallaBanners(){
@@ -373,11 +385,13 @@ const Gacha=(()=>{
       <div>Género: ${c.genero==='N'?'<b>sin género</b>':GN[c.genero]?`<b style="color:${GN[c.genero][2]}">${GN[c.genero][0]} ${GN[c.genero][1]}</b>`:'<small>sin definir</small>'}</div>
       <div>Nivel ${c.nivel} · ${'★'.repeat(c.estrellas)||'☆ sin estrellas'}</div>
       <div>Naturaleza: <b>${esc(nat.n)}</b> <small>(${efecto})</small></div>
+      <div style="margin-top:8px"><b>📊 Estadísticas</b><div class="stt"></div></div>
       <div style="margin-top:8px"><b>IVs</b><table style="font-size:12px;margin-top:4px">${iv}</table></div>
       <div style="margin-top:8px"><b>Ataques</b><div class="kit" style="font-size:12px;margin-top:4px;min-width:220px"><small style="opacity:.7">Cargando ataques…</small></div></div>
       <div style="margin-top:8px;opacity:.7;font-size:12px">Conseguida el ${esc(c.obtenidoEn)} · ${esc(c.origen)}</div></div>`;
     nombreEs(c.especieId).then(n=>{const e=d.querySelector('.nm');if(e)e.textContent=n});
     const kz=d.querySelector('.kit');
+    pintarStats(c,d.querySelector('.stt'));
     kitDe(c,(a,t)=>{kz.innerHTML=`<small style="opacity:.7">Cargando ataques ${a}/${t}…</small>`})
       .then(kit=>{kz.innerHTML=kit.length?kit.map(filaAtaque).join(''):'<small>Sin ataques disponibles</small>'})
       .catch(()=>{kz.innerHTML='<small style="color:#f87171">No se pudieron cargar los ataques (¿sin conexión?)</small>'});
@@ -522,11 +536,36 @@ const Gacha=(()=>{
   const tengo=k=>(partida.objetos&&partida.objetos[k])||0;
   const costes=e=>[[e.o,e.n],...(e.x||[])];   // objetos que gasta una evolución
   const BASE={};   // estadísticas base por especie (undefined = sin pedir, null = fallo), para comparar Ataque y Defensa
-  function statsCarta(c){   // fórmula de los juegos, sin EVs: ((2·base + IV)·nivel/100 + 5) × naturaleza
-    const b=BASE[c.especieId],nat=Guardado.NATURALEZAS[c.naturaleza]||{};
-    const f=s=>{const v=Math.floor((2*b[s]+c.ivs[s])*c.nivel/100)+5;return Math.floor(v*(nat.u===s?110:nat.d===s?90:100)/100)};
-    return{atk:f('atk'),def:f('def')};
+    function statsCarta(c){   // fórmula de los juegos, sin EVs: PS = ((2·base+IV)·nivel/100)+nivel+10 · resto = (((2·base+IV)·nivel/100)+5) × naturaleza
+    const b=BASE[c.especieId],nat=Guardado.NATURALEZAS[c.naturaleza]||{},o={};
+    for(const s of Object.keys(ST)){
+      const v=Math.floor((2*b[s]+c.ivs[s])*c.nivel/100);
+      o[s]=s==='hp'?v+c.nivel+10:Math.floor((v+5)*(nat.u===s?110:nat.d===s?90:100)/100);
+    }
+    return o;
   }
+
+    const SCOL={hp:'#22c55e',atk:'#f97316',def:'#eab308',spa:'#38bdf8',spd:'#84cc16',spe:'#f472b6'};
+  function pintarStats(c,z){
+    const b=BASE[c.especieId];
+    if(b===undefined){
+      z.innerHTML='<small style="opacity:.7">Cargando estadísticas…</small>';
+      datosEsp(c.especieId).then(d=>{BASE[c.especieId]=d.stats}).catch(()=>{BASE[c.especieId]=null})
+        .then(()=>{if(z.isConnected)pintarStats(c,z)});
+      return;
+    }
+    if(!b){z.innerHTML='<small style="color:#f87171">No se pudieron cargar las estadísticas (¿sin conexión?)</small>';return}
+    const s=statsCarta(c),nat=Guardado.NATURALEZAS[c.naturaleza]||{},tot=Object.values(b).reduce((x,y)=>x+y,0);
+    const filas=Object.keys(ST).map(k=>{
+      const m=nat.u===k?' <b style="color:#4ade80">▲</b>':nat.d===k?' <b style="color:#f87171">▼</b>':'';
+      return `<tr><td style="padding-right:8px">${ST[k]}</td>
+        <td style="width:120px"><div style="background:#1e293b;height:6px;border-radius:3px"><div style="width:${Math.min(100,b[k]/1.8)}%;height:6px;background:${SCOL[k]};border-radius:3px"></div></div></td>
+        <td style="padding-left:8px;text-align:right"><b>${s[k]}</b>${m}</td>
+        <td style="padding-left:6px;opacity:.6"><small>base ${b[k]}</small></td></tr>`;
+    }).join('');
+    z.innerHTML=`<table style="font-size:12px;margin-top:4px">${filas}</table><small style="opacity:.6">Total base ${tot} · valores a nivel ${c.nivel}</small>`;
+  }
+
   function estadoEvo(c,e){
     if(e.t==='bloqueado')return{ok:false,txt:'🔒 Próximamente · requisito: '+esc(e.req)};
     const p=[];let ok=true;
