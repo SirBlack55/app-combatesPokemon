@@ -1,6 +1,6 @@
 // Bucle del juego. La simulación avanza en pasos FIJOS de 1/60 s (igual en cualquier pantalla),
 // el dibujo se hace en cada fotograma.
-function step(dt){if(hs>0){hs-=dt;return}T+=dt;if(!over){duelT+=dt;if(duelT>40&&!sd){sd=1;log('⚠️ ¡Muerte súbita! El daño aumenta con el tiempo')}}mons.forEach(m=>upM(m,dt));
+function step(dt){if(hs>0){hs-=dt;return}T+=dt;if(!over){duelT+=dt;if(duelT>40&&!sd){sd=1;log('⚠️ ¡Muerte súbita! El daño aumenta con el tiempo')}}tickCampo(dt);mons.forEach(m=>upM(m,dt));
  for(const a of mons)for(const b of mons)if(a<b&&!a.dead&&!b.dead){const dx=b.x-a.x,dy=b.y-a.y,d=Math.hypot(dx,dy);if(d<34&&d>0){const p=(34-d)/2;a.x-=dx/d*p;a.y-=dy/d*p;b.x+=dx/d*p;b.y+=dy/d*p}}
  for(const e of ents){if(e.delay>0){e.delay-=dt;if(e.o.dead)e.life=0;e.x=e.o.x;e.y=e.o.y;if(e.ch&&e.delay>0&&ps.length<700){const a=R(0,7);ps.push({x:e.o.x+Math.cos(a)*70,y:e.o.y+Math.sin(a)*70,vx:-Math.cos(a)*140,vy:-Math.sin(a)*140,l:.5,m:.5,c:e.cc,s:4,g:1})}if(e.delay<=0&&'xwsmcqz'.includes(e.k))act(e);if(e.delay<=0&&e.k=='p'){e.a=e.o.a+RS(-.3,.3);e.x+=Math.cos(e.o.a)*20;e.y+=Math.sin(e.o.a)*20}
    if(e.delay<=0&&e.k=='b'){e.life=.25;const t=e.tg;if(t.dead||e.o.dead){e.life=0}else{e.pts=[];const ox=e.sky?t.x+R(-50,50):e.o.x,oy=e.sky?-20:e.o.y,dx=t.x-ox,dy=t.y-oy,L=Math.hypot(dx,dy),nx=-dy/L,ny=dx/L;for(let i=0;i<=9;i++){const u=i/9,j=i%9==0?0:R(-14,14);e.pts.push([ox+dx*u+nx*j,oy+dy*u+ny*j])}if(e.sky){shk=Math.max(shk,3);sfl=.3;sfc='#fff';ring(t.x,t.y,'#fde047',50,.4)}hit(t,e.dm,'elec',e.o,e);burst(t.x,t.y,'#fde047',10,150,true)}}continue}
@@ -17,7 +17,7 @@ function step(dt){if(hs>0){hs-=dt;return}T+=dt;if(!over){duelT+=dt;if(duelT>40&&
  if(over)return;
  for(let s=0;s<2;s++){const act=mons.some(m=>m.side==s&&!m.dead),nx=team[s].find(u=>!u.used);
   if(!act&&nx){send[s]-=dt;if(send[s]<=0){spawn(s,nx);send[s]=1.4}}
-  else if(!act&&!nx){over=true;const w=1-s;$('#ban').innerHTML=`🏆<br>¡Gana el Equipo ${w+1} ${w?'🔴':'🔵'}!<div style="margin-top:10px"><button id="rv">Revancha</button> <button id="ch">Cambiar equipos</button></div>`;$('#ban').style.display='flex';log('🏆 Gana el Equipo '+(w+1));if(alTerminarCombate)alTerminarCombate(w)}}}
+  else if(!act&&!nx&&!over){over=true;const w=1-s;$('#ban').innerHTML=`🏆<br>¡Gana el Equipo ${w+1} ${w?'🔴':'🔵'}!<div style="margin-top:10px"><button id="rv">Revancha</button> <button id="ch">Cambiar equipos</button></div>`;$('#ban').style.display='flex';log('🏆 Gana el Equipo '+(w+1));if(alTerminarCombate)alTerminarCombate(w)}}}
 const PASO=1/60;let acum=0;
 function loop(t){const dt=Math.min(.1,(t-last)/1000||0)*spd;last=t;
  if(inGame){if(!paused){acum+=dt;let n=0;while(acum>=PASO&&n<8){step(PASO);acum-=PASO;n++}if(n==8)acum=0}draw();if(t-lu>120){lu=t;mvui()}}

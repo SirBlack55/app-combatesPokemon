@@ -6,7 +6,7 @@ const MODOS=[
   {id:'simulador',icono:'⚔️',nombre:'Simulador',desc:'Combates por equipos en la arena'},
   {id:'gacha',icono:'🎴',nombre:'Gacha',desc:'Banners, box, eventos y entrenamiento',
    abrir:c=>Gacha.abrir(c,()=>irA('menu'))},
-  {id:'aventura',icono:'🗺️',nombre:'Aventura',desc:'Rutas, capturas, gimnasios y la Liga',
+  {id:'aventura',icono:'🗺️',nombre:'Aventura',desc:'Explora Kanto a tu aire: rutas, capturas y gimnasios',
    abrir:c=>ModoAventura.abrir(c,()=>irA('menu'))},
 ];
 

@@ -1,10 +1,11 @@
-// MODO AVENTURA (pantallas): menú, elegir inicial, mapa por nodos, combates, captura y equipo.
+// MODO AVENTURA LIBRE (pantallas): mapa por lugares, combates, captura, tienda, viaje rápido y equipo.
 // Necesita: aventura/regiones.js, aventura/aventura.js, aventura/guardado-aventura.js, experiencia.js (+ experiencia-datos.js),
 //           evoluciones-datos.js, rarezas.js, generos-datos.js y pokeapi.js (loadSp, SPR, jf, ERR) + el simulador (iniciarCombate).
 // Los combates usan el motor del simulador: cada Pokémon se registra en TY con sus stats escalados por nivel (clave 'p25@12').
 const ModoAventura=(()=>{
   const RC={N:'#94a3b8',R:'#4ade80',SR:'#60a5fa',SSR:'#c084fc',UR:'#fbbf24',LR:'#f472b6'};
   const GN={M:['♂','#60a5fa'],F:['♀','#f472b6']};
+  const BOLAS=['pokeball','superball'];
   const esc=s=>String(s).replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
   const h=(t,css,html)=>{const e=document.createElement(t);if(css)e.style.cssText=css;if(html!=null)e.innerHTML=html;return e};
   const rz=id=>(typeof RAREZA_POR_ESPECIE!=='undefined'&&RAREZA_POR_ESPECIE[id]||['N'])[0];
@@ -12,9 +13,10 @@ const ModoAventura=(()=>{
   const ctx=()=>({Experiencia,grupoDe,EVOLUCIONES:typeof EVOLUCIONES!=='undefined'?EVOLUCIONES:{},
     rateDe:id=>typeof GENERO_RATE!=='undefined'?GENERO_RATE[id]:undefined,rz});
   let cont,salir,run=null,hayEstilo=false,ocupado=false;
-  if(typeof OBJETOS!=='undefined'&&!OBJETOS.pokeball)OBJETOS.pokeball=['Poké Ball','⚪'];
+  if(typeof OBJETOS!=='undefined'){if(!OBJETOS.pokeball)OBJETOS.pokeball=['Poké Ball','⚪'];if(!OBJETOS.superball)OBJETOS.superball=['Super Ball','🔵']}
   const objN=k=>typeof objetoNombre==='function'?objetoNombre(k):k,objI=k=>typeof objetoIcono==='function'?objetoIcono(k):'📦';
   const premioHtml=p=>Object.entries(p).map(([k,n])=>`<span title="${esc(objN(k))}" style="white-space:nowrap">${objI(k)}×${n}</span>`).join(' ');
+  const R$=()=>REGIONES[run.region],nodoAct=()=>R$().nodos[run.nodo];
 
   // Nombres en español (misma caché que el gacha)
   let NOM={};try{NOM=JSON.parse(localStorage.getItem('nombres-es-v1')||'{}')}catch(e){}
@@ -29,12 +31,9 @@ const ModoAventura=(()=>{
   }
   const nm=id=>NOM[id]||'#'+id;
   const cargarNombres=ids=>Promise.all([...new Set(ids)].map(nombreEs));
-
-  const reg=()=>REGIONES[run.region];
-  const nodoAct=()=>reg().nodos[run.nodo];
   async function guardar(){
     try{await GuardadoAventura.guardar(run)}
-    catch(e){alert('No se pudo guardar la run (¿sin espacio en el navegador?).')}
+    catch(e){alert('No se pudo guardar la partida (¿sin espacio en el navegador?).')}
   }
   const limpiar=()=>{cont.innerHTML='';window.scrollTo&&window.scrollTo(0,0)};
 
@@ -48,16 +47,15 @@ const ModoAventura=(()=>{
       .av-card .r{display:inline-block;padding:0 6px;border-radius:8px;background:var(--c);color:#0f172a;font-weight:700;font-size:11px}
       .av-card small{display:block;opacity:.75}
       .av-box{border:1px solid #334155;border-radius:10px;padding:10px;margin:10px 0;max-width:560px}
-      .av-dot{display:inline-block;width:12px;height:12px;border-radius:50%;border:2px solid #4ade80;margin-right:4px}
-      .av-dot.on{background:#4ade80}`));
+      .av-op{display:block;width:100%;text-align:left;margin:6px 0;padding:10px}
+      .av-op small{opacity:.75}`));
   }
-
   function cabecera(titulo,atras){
     const d=h('div','display:flex;align-items:center;gap:8px;margin:8px 0;flex-wrap:wrap');
     if(atras){const b=h('button','','← Volver');b.onclick=atras;d.append(b)}
     d.append(h('b','font-size:16px',esc(titulo)));
     if(run)d.append(h('span','margin-left:auto;font-size:13px',
-      `${'❤️'.repeat(Math.max(0,run.vidas))||'💀'} · 🏅 ${run.medallas.length} · ${objI('pokeball')} <b>${run.objetos.pokeball||0}</b>`));
+      `💰 <b>${run.dinero}</b> · 🏅 ${run.medallas.length} · ${BOLAS.map(k=>`${objI(k)}<b>${run.objetos[k]||0}</b>`).join(' ')}`));
     return d;
   }
   function tarjeta(p,{alClick,off,extra}={}){
@@ -67,80 +65,108 @@ const ModoAventura=(()=>{
     if(alClick)d.onclick=alClick;
     return d;
   }
+  const sprites=l=>l.map(e=>`<img src="${SPR+e.id}.png" width="36" height="36" style="image-rendering:pixelated;vertical-align:middle" alt="" title="${esc(nm(e.id))}"><small>Nv ${e.nv}</small>`).join(' ');
 
-  // ---------- Menú ----------
+  // ---------- Menú e inicial ----------
   async function pantallaMenu(){
     limpiar();run=null;cont.append(cabecera('🗺️ Aventura',salir));
     const g=await GuardadoAventura.cargar();
     if(g){
-      const n=REGIONES[g.region].nodos[g.nodo],box=h('div','',`<b>Run en curso</b> · ${esc(REGIONES[g.region].nombre)} · ${n.icono} ${esc(n.nombre)}<br>
-        <small>${'❤️'.repeat(Math.max(0,g.vidas))} · 🏅 ${g.medallas.length} medalla${g.medallas.length===1?'':'s'} · ${g.pokes.length} Pokémon</small><br>`);
+      const n=REGIONES[g.region].nodos[g.nodo],box=h('div','',`<b>Tu partida</b> · ${esc(REGIONES[g.region].nombre)} · ${n.icono} ${esc(n.nombre)}<br>
+        <small>🏅 ${g.medallas.length} medalla${g.medallas.length===1?'':'s'} · ${g.pokes.length} Pokémon · 💰 ${g.dinero}</small><br>`);
       box.className='av-box';
-      const c=h('button','margin:6px 6px 0 0','▶ Continuar'),a=h('button','color:#f87171;margin-top:6px','🗑 Abandonar');
+      const c=h('button','margin:6px 6px 0 0;padding:8px 14px','▶ Continuar'),a=h('button','color:#f87171;margin-top:6px','🗑 Borrar partida');
       c.onclick=async()=>{run=g;await cargarNombres(g.pokes.map(p=>p.especieId));pantallaNodo()};
-      a.onclick=async()=>{if(!confirm('¿Abandonar la run? Se pierde todo el progreso.'))return;await GuardadoAventura.archivar(g);pantallaMenu()};
+      a.onclick=async()=>{if(!confirm('¿Borrar la partida? Se pierde todo el progreso.'))return;await GuardadoAventura.borrar();pantallaMenu()};
       box.append(c,a);cont.append(box);
+    }else{
+      const nw=h('button','padding:12px 16px','🆕 Nueva partida');nw.onclick=pantallaInicial;cont.append(nw);
     }
-    const nw=h('button','padding:12px 16px',g?'🆕 Nueva run (sustituye a la actual)':'🆕 Nueva run');
-    nw.onclick=()=>{if(g&&!confirm('Ya tienes una run en curso. ¿Empezar otra y perder la actual?'))return;pantallaInicial()};
-    cont.append(nw);
-    const hist=await GuardadoAventura.historial();
-    if(hist.length)cont.append(h('div','margin-top:16px;font-size:12px;max-width:560px','<b>Últimas runs</b><br>'+hist.slice(0,5).map(x=>
-      `${x.resultado==='victoria'?'🏆':x.resultado==='derrota'?'💀':'🚪'} ${x.fecha} · ${esc(x.region)} · 🏅${x.medallas} · ${x.capturas} capturas · ${x.combates} combates`).join('<br>')));
   }
-
   async function pantallaInicial(){
     limpiar();run=null;cont.append(cabecera('Elige tu inicial',pantallaMenu));
     const R=REGIONES.kanto;await cargarNombres(R.iniciales);
-    cont.append(h('p','margin:6px 0',`Empiezas en <b>${esc(R.nombre)}</b> con un Pokémon de nivel ${Aventura.CFG.inicial.nivel} y ${Aventura.CFG.inicial.pokeball} Poké Balls.`));
+    cont.append(h('p','margin:6px 0',`Empiezas en <b>${esc(R.nombre)}</b> con un Pokémon de nivel ${Aventura.CFG.inicial.nivel}, ${Aventura.CFG.inicial.pokeball} Poké Balls y 💰 ${Aventura.CFG.inicial.dinero}. Ve a donde quieras.`));
     const g=h('div','');g.className='av-grid';
-    for(const id of R.iniciales){
-      const c=tarjeta({especieId:id,nivel:Aventura.CFG.inicial.nivel,genero:null},{alClick:async()=>{
-        if(!confirm(`¿Empezar con ${nm(id)}?`))return;
-        run=Aventura.nuevaRun(R,id,ctx());await guardar();pantallaNodo();
-      }});
-      g.append(c);
-    }
+    for(const id of R.iniciales)g.append(tarjeta({especieId:id,nivel:Aventura.CFG.inicial.nivel,genero:null},{alClick:async()=>{
+      if(!confirm(`¿Empezar con ${nm(id)}?`))return;
+      run=Aventura.nuevaPartida(R,id,ctx());await guardar();pantallaNodo();
+    }}));
     cont.append(g);
   }
 
-  // ---------- Mapa por nodos ----------
+  // ---------- Lugar actual ----------
   async function pantallaNodo(aviso){
-    if(run.fin)return pantallaFin();
     if(run.pendCaptura)return pantallaCaptura();
-    const R=reg(),n=nodoAct();
-    const pend=Aventura.pendiente(run,R);if(pend)await guardar();   // el encuentro salvaje queda fijado en la run
-    await cargarNombres([...Aventura.equipo(run).map(p=>p.especieId),...(pend?pend.enemigos.map(e=>e.id):[])]);
+    const R=R$(),n=nodoAct(),acc=Aventura.acciones(run,R);await guardar();   // el salvaje en curso queda fijado
+    await cargarNombres([...Aventura.equipo(run).map(p=>p.especieId),...acc.flatMap(a=>a.enemigos.map(e=>e.id))]);
     limpiar();cont.append(cabecera(R.nombre,pantallaMenu));
     if(typeof aviso==='string')cont.append(h('p','color:#4ade80;margin:6px 0',esc(aviso)));
-    const tot=Aventura.total(n),box=h('div','',`<div style="font-size:20px">${n.icono} <b>${esc(n.nombre)}</b></div><div style="font-size:12px;opacity:.8;margin:2px 0">${esc(n.desc||'')}</div>`);
+    const box=h('div','',`<div style="font-size:20px">${n.icono} <b>${esc(n.nombre)}</b></div><div style="font-size:12px;opacity:.8;margin:2px 0 6px">${esc(n.desc||'')}</div>`);
     box.className='av-box';
-    if(tot)box.append(h('div','margin:6px 0',Array.from({length:tot},(_,i)=>`<span class="av-dot${i<run.prog?' on':''}"></span>`).join('')+` <small>${run.prog}/${tot}</small>`));
-    if(!run.completo&&pend){
-      if(pend.tipo==='salvaje')box.append(h('div','margin:6px 0',`Te sale al paso: <b>${esc(nm(pend.enemigos[0].id))}</b> salvaje de nivel ${pend.enemigos[0].nv}`));
-      else box.append(h('div','margin:6px 0',`<b>${esc(pend.titulo)}</b>: ${pend.enemigos.map(e=>`<img src="${SPR+e.id}.png" width="40" height="40" style="image-rendering:pixelated;vertical-align:middle" alt="" title="${esc(nm(e.id))}">Nv ${e.nv}`).join(' ')}`));
-      const b=h('button','padding:10px 16px','⚔️ ¡Combatir!');b.onclick=combatir;box.append(b);
-    }else if(run.completo){
-      box.append(h('div','color:#4ade80;margin:6px 0','✅ Completado'));
-      for(const id of n.sig||[]){
-        const s=R.nodos[id],b=h('button','display:block;text-align:left;margin:6px 0;padding:10px;width:100%',`${s.icono} <b>${esc(s.nombre)}</b><br><small>${esc(s.desc||'')}</small>`);
-        b.onclick=async()=>{Aventura.elegirSiguiente(run,R,id);await guardar();pantallaNodo()};
-        box.append(b);
-      }
+    for(const a of acc){
+      if(a.hecho){box.append(h('div','font-size:12px;opacity:.6;margin:4px 0',`✔ ${esc(a.titulo)} (derrotado)`));continue}
+      const b=h('button','');b.className='av-op';
+      b.innerHTML=a.tipo==='salvaje'?`🌿 <b>Buscar Pokémon salvajes</b><br><small>Te sale al paso: ${esc(nm(a.enemigos[0].id))} de nivel ${a.enemigos[0].nv}</small>`
+        :`${a.tipo==='gimnasio'?'🏟️':'⚔️'} <b>${esc(a.titulo)}</b><br>${sprites(a.enemigos)}`;
+      b.onclick=()=>combatir(a.clave);box.append(b);
     }
+    if(n.hallazgo&&!run.hallazgos[run.nodo]){const b=h('button','','🔎 <b>Buscar objetos</b>');b.className='av-op';b.innerHTML='🔎 <b>Buscar objetos</b><br><small>Puede que haya algo por aquí…</small>';
+      b.onclick=async()=>{const p=Aventura.recogerHallazgo(run,R);await guardar();pantallaNodo('Encuentras: '+Object.entries(p).map(([k,v])=>v+' × '+objN(k)).join(', '))};box.append(b)}
+    if(n.tienda){const b=h('button','');b.className='av-op';b.innerHTML='🛒 <b>Poké Mart</b><br><small>Bolas, caramelos y más</small>';b.onclick=()=>pantallaTienda(n.tienda);box.append(b)}
     cont.append(box);
+
+    // Caminos: todos los lugares vecinos, sin orden obligatorio
+    cont.append(h('div','margin-top:10px','<b>🧭 Ir a…</b>'));
+    const cam=h('div','max-width:560px');
+    for(const id of Aventura.vecinos(R,run.nodo)){
+      const s=R.nodos[id],a=Aventura.acceso(run,R,id),b=h('button','');b.className='av-op';
+      b.innerHTML=`${s.icono} <b>${esc(s.nombre)}</b>${run.visitados[id]?'':' <small>(nuevo)</small>'}<br><small>${a.ok?esc(s.desc||''):'🔒 '+esc(a.motivo)}</small>`;
+      b.disabled=!a.ok;b.onclick=async()=>{const r=Aventura.ir(run,R,id);if(r.ok){await guardar();pantallaNodo()}else alert(r.motivo)};
+      cam.append(b);
+    }
+    cont.append(cam);
+    const vr=Aventura.viajeRapido(run,R);
+    if(vr.length){const b=h('button','margin:6px 0','✈️ Viaje rápido ('+vr.length+')');b.onclick=pantallaViaje;cont.append(b)}
+
     cont.append(h('div','margin-top:10px','<b>Tu equipo</b>'));
     const g=h('div','');g.className='av-grid';
-    for(const p of Aventura.equipo(run))g.append(tarjeta(p));
+    for(const p of Aventura.equipo(run))g.append(tarjeta(p,{alClick:()=>pantallaPoke(p.uid)}));
     cont.append(g);
     const inv=Object.entries(run.objetos);
     cont.append(h('div','font-size:12px;margin:6px 0','<b>🎒</b> '+(inv.length?inv.map(([k,v])=>`${objI(k)} ${esc(objN(k))} ×${v}`).join(' · '):'vacía')));
     const eq=h('button','margin-top:6px','👥 Equipo y box');eq.onclick=()=>pantallaEquipo();cont.append(eq);
   }
 
+  function pantallaViaje(){
+    limpiar();cont.append(cabecera('✈️ Viaje rápido',()=>pantallaNodo()));
+    const R=R$(),l=h('div','max-width:560px');
+    for(const id of Aventura.viajeRapido(run,R)){
+      const s=R.nodos[id],b=h('button','');b.className='av-op';b.innerHTML=`${s.icono} <b>${esc(s.nombre)}</b><br><small>${esc(s.desc||'')}</small>`;
+      b.onclick=async()=>{const r=Aventura.ir(run,R,id,true);if(r.ok){await guardar();pantallaNodo()}else alert(r.motivo)};l.append(b);
+    }
+    cont.append(l);
+  }
+
+  // ---------- Tienda ----------
+  function pantallaTienda(lista,aviso){
+    limpiar();cont.append(cabecera('🛒 Poké Mart',()=>pantallaNodo()));
+    if(typeof aviso==='string')cont.append(h('p','color:#4ade80;margin:6px 0',esc(aviso)));
+    const l=h('div','max-width:560px');
+    for(const it of lista){
+      const f=h('div','display:flex;align-items:center;gap:8px;border:1px solid #334155;border-radius:8px;padding:6px 8px;margin:6px 0',
+        `<div style="flex:1">${objI(it.o)} <b>${esc(objN(it.o))}</b> <small>(tienes ${run.objetos[it.o]||0})</small><br><small>💰 ${it.precio}</small></div>`);
+      for(const n of[1,10]){
+        const b=h('button','padding:4px 10px','×'+n);b.disabled=run.dinero<it.precio*n;
+        b.onclick=async()=>{Aventura.comprar(run,it.o,it.precio,n);await guardar();pantallaTienda(lista,`Compras ${n} × ${objN(it.o)}.`)};f.append(b);
+      }
+      l.append(f);
+    }
+    cont.append(l);
+  }
+
   // ---------- Puente con el combate del simulador ----------
-  // Registra en TY una versión de la especie con stats de ese nivel y devuelve su clave.
-  async function claveNivel(id,nv){
+  async function claveNivel(id,nv){   // registra en TY una versión de la especie con stats de ese nivel
     const base=await loadSp(id),key=base+'@'+nv;
     if(!TY[key]){const b=TY[base],e=Aventura.escalar(b.st,b.H,nv);TY[key]={...b,st:e.st,H:e.H,n:b.n+' Nv '+nv,bst0:Aventura.bst(b.st)}}
     return key;
@@ -167,34 +193,32 @@ const ModoAventura=(()=>{
       iniciarCombate([eqJ,eqR]);
     });
   }
-
-  async function combatir(){
+  async function combatir(clave){
     if(ocupado)return;
-    const R=reg(),pend=Aventura.pendiente(run,R);if(!pend)return;
+    const R=R$(),a=Aventura.accion(run,R,clave);if(!a)return;
     ocupado=true;limpiar();cont.append(cabecera('Preparando combate…'));
     const st=h('p','margin:8px 0','Cargando…');cont.append(st);
     try{
       const jug=[],riv=[],bsts=[],mios=Aventura.equipo(run);
       for(let i=0;i<mios.length;i++){st.textContent=`Cargando tu equipo ${i+1}/${mios.length}…`;const t=await claveNivel(mios[i].especieId,mios[i].nivel);jug.push({t,s:[...TY[t].ds],uid:mios[i].uid})}
-      for(let i=0;i<pend.enemigos.length;i++){st.textContent=`Cargando rival ${i+1}/${pend.enemigos.length}…`;const e=pend.enemigos[i],t=await claveNivel(e.id,e.nv);riv.push({t,s:[...TY[t].ds]});bsts.push(TY[t].bst0)}
+      for(let i=0;i<a.enemigos.length;i++){st.textContent=`Cargando rival ${i+1}/${a.enemigos.length}…`;const e=a.enemigos[i],t=await claveNivel(e.id,e.nv);riv.push({t,s:[...TY[t].ds]});bsts.push(TY[t].bst0)}
       const r=await lanzar(jug,riv);
       let inf=null;
-      if(r.ganaJugador)inf=Aventura.victoria(run,R,{enemigos:pend.enemigos.map((e,i)=>({...e,bst:bsts[i]})),usados:r.usados,entrenador:pend.entrenador},ctx());
-      else inf=Aventura.derrota(run,R,{entrenador:pend.entrenador});
+      if(r.ganaJugador)inf=Aventura.victoria(run,R,{clave,enemigos:a.enemigos.map((e,i)=>({...e,bst:bsts[i]})),usados:r.usados},ctx());
+      else if(!r.huyo)inf=Aventura.derrota(run);
       await guardar();ocupado=false;
-      await cargarNombres([...(inf.subidas||[]).flatMap(s=>[Aventura.poke(run,s.uid).especieId,...s.evol.flatMap(e=>[e.de,e.a])])]);
-      pantallaResultado(r,inf,pend);
+      if(inf&&inf.subidas)await cargarNombres(inf.subidas.flatMap(s=>[Aventura.poke(run,s.uid).especieId,...s.evol.flatMap(e=>[e.de,e.a])]));
+      pantallaResultado(r,inf||{},a);
     }catch(e){
       ocupado=false;st.textContent=ERR;
       const b=h('button','','← Volver');b.onclick=()=>pantallaNodo();cont.append(b);
     }
   }
-
-  function pantallaResultado(r,inf,pend){
+  function pantallaResultado(r,inf,a){
     limpiar();cont.append(cabecera(r.ganaJugador?'🏆 ¡Victoria!':r.huyo?'💨 Has huido':'💀 Derrota'));
     const box=h('div','');box.className='av-box';
     if(r.ganaJugador){
-      box.append(h('div','margin-bottom:6px',`Cada Pokémon que luchó gana <b>${inf.xp} XP</b>.`));
+      box.append(h('div','margin-bottom:6px',`Cada Pokémon que luchó gana <b>${inf.xp} XP</b> · 💰 +${inf.dinero}`));
       for(const s of inf.subidas){
         const p=Aventura.poke(run,s.uid);
         let t=`${esc(nm(p.especieId))}: Nv ${s.antes}${s.despues>s.antes?` → <b style="color:#4ade80">${s.despues}</b>`:''}`;
@@ -202,35 +226,37 @@ const ModoAventura=(()=>{
         box.append(h('div','margin:3px 0',t));
       }
       if(inf.medalla)box.append(h('div','margin-top:8px',`🏅 ¡Medalla ${esc(inf.medalla)} conseguida!`));
-      if(inf.completo)box.append(h('div','margin-top:8px;color:#4ade80',`✅ Has completado <b>${esc(nodoNombre())}</b>${inf.premio?`. Premio: ${premioHtml(inf.premio)}`:''}`));
-    }else if(r.huyo)box.append(h('div','',pend.entrenador?'Huir de un entrenador cuenta como derrota.':'El Pokémon salvaje sigue ahí: puedes volver a intentarlo.'));
-    else box.append(h('div','',pend.entrenador?'Has perdido contra el entrenador.':'Tu equipo no ha podido con el Pokémon salvaje. Puedes volver a intentarlo.'));
-    if(!r.ganaJugador&&inf.vidasPerdidas)box.append(h('div','margin-top:6px;color:#fbbf24',`❤️ Pierdes una vida. Te quedan ${Math.max(0,run.vidas)}.`));
+      if(inf.premio)box.append(h('div','margin-top:6px',`Premio: ${premioHtml(inf.premio)}`));
+    }else if(r.huyo)box.append(h('div','',a.tipo==='salvaje'?'El Pokémon salvaje sigue ahí.':'Puedes volver a intentarlo cuando quieras.'));
+    else box.append(h('div','','Tu equipo se retira a descansar. Sin castigo: sube de nivel o cambia de equipo y vuelve a intentarlo.'));
     cont.append(box);
     const b=h('button','padding:10px 16px','Continuar');b.onclick=()=>pantallaNodo();cont.append(b);
   }
-  const nodoNombre=()=>nodoAct().nombre;
 
   // ---------- Captura ----------
   async function pantallaCaptura(aviso){
     const c=run.pendCaptura;await cargarNombres([c.id]);
     limpiar();cont.append(cabecera('¡Está agotado!'));
     if(typeof aviso==='string')cont.append(h('p','color:#fbbf24;margin:6px 0',esc(aviso)));
-    const r=rz(c.id),pr=Math.round(Aventura.probCaptura(r)*100),bolas=run.objetos.pokeball||0;
+    const r=rz(c.id);
     const box=h('div','text-align:center',`<img src="${SPR+c.id}.png" style="width:112px;height:112px;image-rendering:pixelated" alt="">
-      <div><b>${esc(nm(c.id))}</b> Nv ${c.nv} <span style="background:${RC[r]};color:#0f172a;border-radius:8px;padding:0 8px;font-weight:700">${r}</span></div>
-      <div style="font-size:12px;margin:6px 0">Probabilidad de captura: <b>${pr} %</b> · ${objI('pokeball')} Poké Balls: <b>${bolas}</b></div>`);
+      <div><b>${esc(nm(c.id))}</b> Nv ${c.nv} <span style="background:${RC[r]};color:#0f172a;border-radius:8px;padding:0 8px;font-weight:700">${r}</span></div>`);
     box.className='av-box';
-    const l=h('button','margin:4px 6px;padding:10px 16px',`${objI('pokeball')} Lanzar Poké Ball`),d=h('button','margin:4px 6px','Dejarlo marchar');
-    l.disabled=bolas<=0;if(bolas<=0)box.append(h('div','font-size:12px;opacity:.8','No te quedan Poké Balls.'));
-    l.onclick=async()=>{
-      const x=Aventura.lanzarBola(run,ctx());await guardar();
-      if(x.capturado){await nombreEs(x.poke.especieId);pantallaNodo(`¡${nm(x.poke.especieId)} capturado! ${x.enEquipo?'Se une a tu equipo.':'Va a la box (equipo completo).'}`)}
-      else if(x.huyo)pantallaNodo('¡El Pokémon se ha escapado!');
-      else pantallaCaptura('¡Se ha soltado! Puedes intentarlo otra vez (pero puede escapar).');
-    };
-    d.onclick=async()=>{Aventura.soltarCaptura(run);await guardar();pantallaNodo()};
-    box.append(l,d);cont.append(box);
+    let alguna=false;
+    for(const k of BOLAS){
+      const n=run.objetos[k]||0,pr=Math.round(Aventura.probCaptura(r,k)*100),b=h('button','margin:6px 4px;padding:8px 12px',`${objI(k)} ${esc(objN(k))} · ${pr} % <small>(tienes ${n})</small>`);
+      b.disabled=n<=0;if(n>0)alguna=true;
+      b.onclick=async()=>{
+        const x=Aventura.lanzarBola(run,ctx(),k);await guardar();
+        if(x.capturado){await nombreEs(x.poke.especieId);pantallaNodo(`¡${nm(x.poke.especieId)} capturado! ${x.enEquipo?'Se une a tu equipo.':'Va a la box (equipo completo).'}`)}
+        else if(x.huyo)pantallaNodo('¡El Pokémon se ha escapado!');
+        else pantallaCaptura('¡Se ha soltado! Puedes intentarlo otra vez (pero puede escapar).');
+      };
+      box.append(b);
+    }
+    if(!alguna)box.append(h('div','font-size:12px;opacity:.8','No te quedan bolas. Puedes comprar en un Poké Mart… pero este Pokémon se irá.'));
+    const d=h('button','margin:6px 4px','Dejarlo marchar');d.onclick=async()=>{Aventura.soltarCaptura(run);await guardar();pantallaNodo()};
+    box.append(h('br'),d);cont.append(box);
   }
 
   // ---------- Equipo y box ----------
@@ -244,23 +270,37 @@ const ModoAventura=(()=>{
     sec(`Equipo (${run.equipo.length}/${Aventura.CFG.equipoMax})`,Aventura.equipo(run));
     sec('Box',run.pokes.filter(p=>!run.equipo.includes(p.uid)));
   }
-
   async function pantallaPoke(uid,aviso){
     const p=Aventura.poke(run,uid);if(!p)return pantallaEquipo();
     const ops=Aventura.opcionesEvo(run,p,ctx());await cargarNombres([p.especieId,...ops.map(o=>o.e.a)]);
     limpiar();cont.append(cabecera(nm(p.especieId),()=>pantallaEquipo()));
     if(typeof aviso==='string')cont.append(h('p','color:#4ade80;margin:6px 0',esc(aviso)));
     const g=grupoDe(p.especieId),r=rz(p.especieId),sig=p.nivel<Experiencia.NIVEL_MAX?Experiencia.xpTotal(g,p.nivel+1)-p.xp:0;
-    const d=h('div','display:flex;gap:14px;flex-wrap:wrap;align-items:center',`<img src="${SPR+p.especieId}.png" style="width:112px;height:112px;image-rendering:pixelated" alt="">
+    cont.append(h('div','display:flex;gap:14px;flex-wrap:wrap;align-items:center',`<img src="${SPR+p.especieId}.png" style="width:112px;height:112px;image-rendering:pixelated" alt="">
       <div><div style="font-size:18px"><b>${esc(nm(p.especieId))}</b> <span style="background:${RC[r]};color:#0f172a;border-radius:8px;padding:0 8px;font-weight:700">${r}</span>${GN[p.genero]?` <b style="color:${GN[p.genero][1]}">${GN[p.genero][0]}</b>`:''}</div>
-      <div>Nivel ${p.nivel}${sig?` · faltan ${sig} XP para el ${p.nivel+1}`:' · nivel máximo'}</div></div>`);
-    cont.append(d);
+      <div>Nivel ${p.nivel}${sig?` · faltan ${sig} XP para el ${p.nivel+1}`:' · nivel máximo'}</div></div>`));
+    // Caramelos
+    cont.append(h('div','margin-top:12px','<b>🍬 Caramelos</b>'));
+    for(const k of Object.keys(Experiencia.XP_CARAMELO)){
+      const n=run.objetos[k]||0,f=h('div','display:flex;align-items:center;gap:6px;margin:4px 0;flex-wrap:wrap',`<span style="min-width:230px">${objI(k)} ${esc(objN(k))} <small>(+${Experiencia.XP_CARAMELO[k]} XP · tienes ${n})</small></span>`);
+      for(const[t,c]of[['×1',1],['×10',10]]){
+        const b=h('button','padding:2px 8px',t);b.disabled=n<=0||p.nivel>=Experiencia.NIVEL_MAX;
+        b.onclick=async()=>{
+          const x=Aventura.usarCaramelo(run,p,k,c,ctx());if(!x)return;await guardar();
+          await cargarNombres(x.evol.flatMap(e=>[e.de,e.a]));
+          pantallaPoke(uid,(x.despues>x.antes?`¡Sube del nivel ${x.antes} al ${x.despues}!`:`+${x.xp} XP`)+x.evol.map(e=>` ✨ ¡${nm(e.de)} evoluciona a ${nm(e.a)}!`).join(''));
+        };
+        f.append(b);
+      }
+      cont.append(f);
+    }
+    // Evolución
     cont.append(h('div','margin-top:12px','<b>🧬 Evolución</b>'));
     if(!ops.length)cont.append(h('p','opacity:.7;margin:6px 0','No tiene más evoluciones.'));
     for(const o of ops){
       const e=o.e,f=h('div','display:flex;align-items:center;gap:8px;border:1px solid #334155;border-radius:8px;padding:6px;margin:6px 0;max-width:520px');
       const req=e.t==='nivel'?`Nivel ${e.nivel} <small>(automática)</small>`:e.t==='objeto'?[[e.o,e.n],...(e.x||[])].map(([k,n])=>`${objI(k)} ${n} × ${esc(objN(k))} <small>(tienes ${run.objetos[k]||0})</small>`).join(' + '):'🔒 Próximamente';
-      f.innerHTML=`<img src="${SPR+e.a}.png" style="width:48px;height:48px;image-rendering:pixelated" alt=""><div style="flex:1"><b>${esc(nm(e.a))}</b><br><span style="font-size:12px">${req}${!o.ok&&o.motivo&&e.t==='objeto'&&o.motivo!=='Faltan objetos'?` · ${esc(o.motivo)}`:''}</span></div>`;
+      f.innerHTML=`<img src="${SPR+e.a}.png" style="width:48px;height:48px;image-rendering:pixelated" alt=""><div style="flex:1"><b>${esc(nm(e.a))}</b><br><span style="font-size:12px">${req}</span></div>`;
       if(e.t==='objeto'){
         const b=h('button','','Evolucionar');b.disabled=!o.ok;
         b.onclick=async()=>{if(!confirm(`¿Evolucionar a ${nm(e.a)}?`))return;const x=Aventura.evolucionar(run,p,e,ctx());await guardar();pantallaPoke(uid,x?`¡${nm(x.de)} ha evolucionado a ${nm(x.a)}!`:null)};
@@ -272,16 +312,6 @@ const ModoAventura=(()=>{
     b1.onclick=async()=>{const m=Aventura.alternarEquipo(run,uid);if(m){alert(m);return}await guardar();pantallaPoke(uid,en?'Pasa a la box.':'Entra en el equipo.')};
     b2.onclick=async()=>{if(!confirm(`¿Liberar a ${nm(p.especieId)}? No se puede deshacer.`))return;const m=Aventura.liberar(run,uid);if(m){alert(m);return}await guardar();pantallaEquipo('Pokémon liberado.')};
     cont.append(b1,b2);
-  }
-
-  // ---------- Fin de la run ----------
-  function pantallaFin(){
-    limpiar();const gana=run.fin==='victoria';cont.append(cabecera(gana?'🏆 ¡Run completada!':'💀 Fin de la run'));
-    const box=h('div','',`<div style="font-size:16px;margin-bottom:6px">${gana?'¡Has llegado hasta el final de esta versión de Kanto!':'Te has quedado sin vidas.'}</div>
-      🏅 Medallas: <b>${run.medallas.length}</b> (${esc(run.medallas.join(', ')||'ninguna')})<br>⚔️ Combates ganados: <b>${run.stats.combates}</b><br>
-      🎯 Capturas: <b>${run.stats.capturas}</b> · 👥 Pokémon: <b>${run.pokes.length}</b><br>💥 Derrotas: <b>${run.stats.derrotas}</b>`);
-    box.className='av-box';cont.append(box);
-    const b=h('button','padding:10px 16px','Volver al menú');b.onclick=async()=>{await GuardadoAventura.archivar(run);pantallaMenu()};cont.append(b);
   }
 
   // Punto de entrada: lo llama el menú de modos.
