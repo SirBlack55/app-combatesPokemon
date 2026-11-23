@@ -8,7 +8,7 @@ function hit(tg,dm,t,o,e){if(tg.dead||tg.z>30)return;
  if(fx&&((fx.k=='dormido'&&!(tg.ail&&tg.ail.k=='slp'))||(fx.k=='sinc'&&!o.types.some(x=>tg.types.includes(x))))){txt.push({x:tg.x,y:tg.y-48,s:'No afecta',c:'#e2e8f0',l:1.2,sm:1});return}
  const ef=efTipo(t,tg),cat=(e&&e.cat)||(o.plan&&o.plan.cat)||'phy',fj=fx?danoEsp(fx,o,tg):null,mxK=fx&&fx.mx?(stat(o,'atk')>stat(o,'spa')?'phy':'spe'):null,AQ=(fx&&fx.as)||((mxK||cat)=='phy'?'atk':'spa'),DQ=(fx&&fx.od)||(((mxK||cat)=='phy')!=salaK('wonder')?'def':'spd'),
   cr=rnd()<critP(o,tg,e)&&fj==null?1.5:1,
-  d=(ef==0&&!(fx&&fx.ig))?0:fj!=null?fj:Math.max(1,Math.round((.44*dm*stat(fx&&fx.ua?tg:o,AQ)/stat(tg,DQ)+.5)*(o.types.includes(t)?1.5:1)*ef*campoMul(t,tg,cat)*cr*RS(.85,1.15)*.9*(1+Math.max(0,duelT-40)/25))),an=Math.atan2(tg.y-o.y,tg.x-o.x);
+  d=(ef==0&&!(fx&&fx.ig))?0:fj!=null?fj:Math.max(1,Math.round((.44*dm*stat(fx&&fx.ua?tg:o,AQ)/stat(tg,DQ)+.5)*(o.types.includes(t)?1.5:1)*ef*campoMul(t,tg,cat)*mulDano(o,tg,t,cat,dm)*cr*RS(.85,1.15)*.9*(1+Math.max(0,duelT-40)/25))),an=Math.atan2(tg.y-o.y,tg.x-o.x);
  const hh=(!e||e.f)&&o.last&&o.last.hits;   // golpe principal de un ataque de varios golpes: agenda el resto
  if(hh&&d>0&&!tg.dead)agendaHits(o,tg,dm,t,cat,fx);
  if(tg.vol&&tg.vol.sub&&d>0){const sb=tg.vol.sub;sb.hp-=d;imp(tg.x,tg.y,t,.7);txt.push({x:tg.x+R(-10,10),y:tg.y-30,s:'-'+d,c:'#fbbf24',l:.9});if(sb.hp<=0){delete tg.vol.sub;txt.push({x:tg.x,y:tg.y-56,s:'¡Se rompió el sustituto!',c:'#fbbf24',l:1.2,sm:1})}if(fx&&(fx.k=='kamik'||fx.k=='gambito'))debilitar(o,null);return}
@@ -21,6 +21,7 @@ function hit(tg,dm,t,o,e){if(tg.dead||tg.z>30)return;
  if(d>0)descongelar(tg,t);
  const sec=(e&&'sec' in e)?e.sec:(o.last&&o.last.sec);   // efectos secundarios (conversor: secDe)
  if(sec&&d>0&&EFECTOS_SECUNDARIOS)secundarios(sec,o,tg,d,!e||e.f);
+ if(d>0&&tg.hp>0)gancho('golpeado',tg,o,d,!e||e.f);   // habilidades y objetos del que recibe
  // Postura de contraataque del rival: si sigue vivo, devuelve parte del daño
  const cn=tg.cnt;
  if(d>0&&tg.hp>0&&cn&&(cn.cat=='any'||cn.cat==cat)&&!o.dead&&o!==tg){
@@ -28,4 +29,5 @@ function hit(tg,dm,t,o,e){if(tg.dead||tg.z>30)return;
   txt.push({x:o.x,y:o.y-30,s:'-'+r,c:'#fbbf24',l:.9});txt.push({x:tg.x,y:tg.y-62,s:'¡Contraataque!',c:'#fbbf24',l:1.1,sm:1});ring(o.x,o.y,'#fbbf24',50,.5);
   if(o.hp<=0)debilitar(o,tg)}
  if(tg.hp<=0)debilitar(tg,o);
- if(fx&&(fx.k=='kamik'||fx.k=='gambito'))debilitar(o,null)}
+ if(fx&&(fx.k=='kamik'||fx.k=='gambito'))debilitar(o,null);
+ if(d>0&&!o.dead)gancho('daDano',o,tg,d,!e||e.f)}   // habilidades y objetos del que ataca

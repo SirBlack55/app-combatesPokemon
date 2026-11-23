@@ -106,13 +106,13 @@ const GachaEventos=(()=>{
 
     // ---------- Combate ----------
     // Convierte una carta (o un rival) en un Pokémon temporal del simulador y devuelve su casilla de equipo {t,s}.
-    async function montar(key,esp,nivel,ivs,natKey,arq,hpMult=1){
+    async function montar(key,esp,nivel,ivs,natKey,arq,hpMult=1,hab=null,obj=null){
       const e=await datosEsp(esp),kit=await kitDe({especieId:esp,arquetipo:arq}),nm=await nombreEs(esp),
         st=Eventos.estadisticas(e.stats,ivs,nivel,X.NAT[natKey]),pool=kit.length?kit.slice(0,4):[N0],fi=new Image();
       fi.src=SPR+esp+'.png';
       TY[key]={n:nm,e:'',c:[TCOL[e.tipos[0]],'#fff','#334155'],st,H:Eventos.vidaCombate(st.hp,hpMult),types:e.tipos,pool,
         ds:pool.map((_,i)=>i),api:1,learn:null,sg:pool.length,img:fi.src,fi,bi:new Image()};
-      return{t:key,s:pool.map((_,i)=>i)};
+      return{t:key,s:pool.map((_,i)=>i),hab,obj};
     }
     async function combatir(ev,f,cartas){
       if(typeof start!=='function'||typeof TY==='undefined'||typeof irA!=='function'){alert('Falta cargar el simulador.');return}
@@ -122,8 +122,8 @@ const GachaEventos=(()=>{
       const st=h('p','','Cargando ataques de los Pokémon (la primera vez tarda un poco)…');C().append(st);
       try{
         const mios=[],riv=[];
-        for(let i=0;i<cartas.length;i++){const c=cartas[i];mios.push(await montar('ev-m'+i,c.especieId,c.nivel,c.ivs,c.naturaleza,c.arquetipo))}
-        for(let i=0;i<f.rivales.length;i++){const r=f.rivales[i];riv.push(await montar('ev-r'+i,r.esp,r.nivel,Eventos.IVS_RIVAL,null,r.arq,r.hpMult||1))}
+        for(let i=0;i<cartas.length;i++){const c=cartas[i];mios.push({...await montar('ev-m'+i,c.especieId,c.nivel,c.ivs,c.naturaleza,c.arquetipo,1,c.habilidad||null,c.objeto||null),cid:c.id})}
+        for(let i=0;i<f.rivales.length;i++){const r=f.rivales[i];riv.push(await montar('ev-r'+i,r.esp,r.nivel,Eventos.IVS_RIVAL,null,r.arq,r.hpMult||1,r.hab||null,r.obj||null))}
         const claves=new Set([...mios,...riv].map(x=>x.t));
         combate={ev,f,claves};TM=[mios,riv];
         alTerminarCombate=w=>{
@@ -143,10 +143,13 @@ const GachaEventos=(()=>{
     }
     async function terminar(vic){
       const c=combate;combate=null;alTerminarCombate=null;
+      // objetos de un solo uso gastados en el combate: desaparecen de su carta (se lee antes de limpiar el simulador)
+      const gastadas=c?team[0].filter(u=>u.objGastado&&u.cid).map(u=>u.cid):[];
       $('#rs').style.display='';
       TM=[[],[]];toSetup();                      // deja el simulador limpio para cuando se use de verdad
       document.body.dataset.modo='gacha';window.scrollTo&&window.scrollTo(0,0);
       if(!c)return;
+      if(gastadas.length){for(const k of P().box)if(gastadas.includes(k.id))k.objeto=null;await guardar()}
       let aviso;
       if(vic){
         const r=Eventos.resolver(P(),c.ev,c.f,hoy());X.reg('evento',1);await guardar();

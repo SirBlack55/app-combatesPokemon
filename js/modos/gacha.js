@@ -37,6 +37,7 @@ const Gacha=(()=>{
     for(const c of partida.box){
       if(!c.genero&&typeof GENERO_RATE!=='undefined'){c.genero=sortearGenero(c.especieId);cambio=true}
       if(typeof Experiencia!=='undefined'){const m=Experiencia.xpTotal(grupoDe(c.especieId),c.nivel);if((c.xp||0)<m){c.xp=m;cambio=true}}
+      if(typeof HabCarta!=='undefined'&&HabCarta.dar(c))cambio=true;   // habilidad (sorteada) y objeto equipado
     }
     if(cambio)guardar();
   }
@@ -577,7 +578,8 @@ const Gacha=(()=>{
           <div>Género: ${c.genero==='N'?'<b>sin género</b>':GN[c.genero]?`<b style="color:${GN[c.genero][2]}">${GN[c.genero][0]} ${GN[c.genero][1]}</b>`:'<small>sin definir</small>'}</div>
           <div>Naturaleza: <b>${esc(nat.n)}</b> <small>(${efecto})</small></div>
           <div style="opacity:.7;font-size:12px">Conseguida el ${esc(c.obtenidoEn)} · ${esc(c.origen)}</div></div>
-          <div class="gd-stats"></div>`;
+          <div class="gd-ho"></div><div class="gd-stats"></div>`;
+        body.querySelector('.gd-ho').append(seccionHabObj(c));
         panelStats(body.querySelector('.gd-stats'),c,pe);
       }else if(pestana==='ataques'){
         const kz=h('div','');kz.className='kit';kz.innerHTML='<small style="opacity:.7">Cargando ataques…</small>';body.append(kz);
@@ -594,6 +596,30 @@ const Gacha=(()=>{
       b.onclick=()=>{pestana=k;mostrar()};bts[k]=b;tabs.append(b);
     }
     cont.append(d);mostrar();
+  }
+
+  // ---------- Habilidad y objeto equipado (pestaña Datos) ----------
+  function seccionHabObj(c){
+    const box=h('div','margin-top:8px;display:flex;flex-direction:column;gap:6px');
+    if(typeof HabCarta==='undefined')return box;
+    const a=HabCarta.infoHab(c.habilidad),o=c.objeto?HabCarta.infoObj(c.objeto):null;
+    box.innerHTML=`<div>Habilidad: <b>${esc(a.n)}</b>${c.habSlot==='o'?' <small style="color:#fbbf24">(oculta)</small>':''}${a.hecho?'':' <small style="opacity:.6">(aún sin efecto)</small>'}<br><small style="opacity:.75">${esc(a.d)}</small></div>
+      <div>Objeto: ${o?`${o.i} <b>${esc(o.n)}</b><br><small style="opacity:.75">${esc(o.d)}</small>`:'<small style="opacity:.7">ninguno</small>'}</div>`;
+    const lista=HabCarta.objetosEquipables().filter(k=>tengo(k)>0);
+    const b=h('button','align-self:flex-start','🎒 Equipar objeto'+(lista.length?'':' (no tienes ninguno)'));b.disabled=!lista.length;
+    const pn=h('div','display:none;flex-direction:column;gap:6px');
+    b.onclick=()=>{pn.style.display=pn.style.display==='none'?'flex':'none'};
+    for(const k of lista){
+      const x=HabCarta.infoObj(k),bt=h('button','text-align:left',`${x.i} <b>${esc(x.n)}</b> ×${tengo(k)}<br><small style="opacity:.75">${esc(x.d)}</small>`);
+      bt.onclick=async()=>{
+        const msg=c.objeto?`¿Cambiar ${HabCarta.infoObj(c.objeto).n} por ${x.n}? El objeto actual se pierde para siempre.`:`¿Equipar ${x.n}? Se gasta una unidad y no se puede recuperar.`;
+        if(!confirm(msg))return;
+        const r=HabCarta.equipar(partida,c,k);if(!r.ok){alert(r.motivo);return}
+        await guardar();pantallaDetalle(c,`Equipado: ${x.n}.`);
+      };
+      pn.append(bt);
+    }
+    box.append(b,pn);return box;
   }
 
   // ---------- Fusión ----------
@@ -852,6 +878,7 @@ const Gacha=(()=>{
     // Solo cambia la especie: id, IVs, naturaleza, estrellas, nivel y arquetipo se conservan; el kit se calcula con la especie.
     const g1=grupoDe(c.especieId);
     c.especieId=e.a;
+    if(typeof HabCarta!=='undefined')HabCarta.alEvolucionar(c);   // misma ranura de habilidad en la nueva especie
     if(typeof Experiencia!=='undefined'&&grupoDe(e.a)!==g1)c.xp=Experiencia.xpTotal(grupoDe(e.a),c.nivel);   // otra curva de XP: se conserva el nivel
     const r=rateDe(e.a);if(r===-1)c.genero='N';else if(r===0)c.genero='M';else if(r>=8)c.genero='F';   // especies de un solo género
     reg('evolucion',1);
@@ -860,7 +887,8 @@ const Gacha=(()=>{
 
   // [especie, nivel, arquetipo, género?, estrellas?] → cartas de prueba en la box (género y estrellas opcionales)
   function darCartas(lista){
-    for(const[sp,nv,aq,gen,est]of lista){const c=Guardado.nuevaCarta(partida,{especieId:sp,arquetipo:aq},'prueba');c.nivel=nv;if(gen)c.genero=gen;if(est)c.estrellas=est}
+    for(const[sp,nv,aq,gen,est,hab,obj]of lista){const c=Guardado.nuevaCarta(partida,{especieId:sp,arquetipo:aq},'prueba');c.nivel=nv;if(gen)c.genero=gen;if(est)c.estrellas=est;
+      if(hab){c.habilidad=hab;c.habSlot=HabCarta.slotDe(sp,hab)}if(obj)c.objeto=obj}
   }
 
   function pantallaPartida(){
@@ -897,7 +925,9 @@ const Gacha=(()=>{
     pf.onclick=async()=>{darCartas(CARTAS_PRUEBA_FUSION);await guardar();pantallaBox(`Añadidas ${CARTAS_PRUEBA_FUSION.length} cartas de prueba para fusionar.`)};
     const po=h('button','','🍬 Solo objetos de prueba (sin cartas)');
     po.onclick=async()=>{for(const[k,n]of Object.entries(OBJETOS_PRUEBA))partida.objetos[k]=tengo(k)+n;await guardar();pantallaPartida()};
-    l.prepend(pf);l.prepend(po);l.prepend(pr);
+    const ph=h('button','','⚔️ Cartas de prueba con habilidad y objeto');
+    ph.onclick=async()=>{if(typeof HabCarta==='undefined')return;darCartas(HabCarta.CARTAS_PRUEBA);await guardar();pantallaBox(`Añadidas ${HabCarta.CARTAS_PRUEBA.length} cartas de prueba con habilidad y objeto.`)};
+    l.prepend(ph);l.prepend(pf);l.prepend(po);l.prepend(pr);
     l.append(ex,im,fi,cp,bo);cont.append(l);
     if(typeof Misiones!=='undefined'){   // fecha de prueba: para ver login, misiones diarias y celebraciones sin esperar días
       const real=Misiones.hoyLocal(),act=Misiones.fechaJuego(),fp=h('div','margin-top:16px;font-size:12px;max-width:380px',

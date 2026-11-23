@@ -6,7 +6,7 @@
 //   { version, jugador:{nombre,creado}, contador, monedas:{gemas}, objetos:{}, box:[cartas],
 //     equipo:[], pity:{}, tutorial:{inicial}, misiones:{}, login:{}, eventos:{} }
 // Una carta de la box es una INSTANCIA: {id, especieId, arquetipo, nivel, xp, estrellas, ivs,
-//   naturaleza, ataquesMT, bloqueado, obtenidoEn, origen}. La rareza y el kit NO se guardan: se calculan.
+//   naturaleza, ataquesMT, bloqueado, obtenidoEn, origen, habilidad, habSlot, objeto}. La rareza y el kit NO se guardan: se calculan.
 
 const Guardado=(()=>{
   const VERSION=1;
@@ -69,7 +69,8 @@ const Guardado=(()=>{
     const ivs={};for(const s of['hp','atk','def','spa','spd','spe'])ivs[s]=Math.floor(rng()*32);
     const nat=Object.keys(NATURALEZAS);
     const c={id:'p'+(++partida.contador),especieId:carta.especieId,arquetipo:carta.arquetipo,nivel:1,xp:0,estrellas:0,
-      ivs,naturaleza:nat[Math.floor(rng()*nat.length)],ataquesMT:[],bloqueado:false,obtenidoEn:hoy(),origen};
+      ivs,naturaleza:nat[Math.floor(rng()*nat.length)],ataquesMT:[],bloqueado:false,obtenidoEn:hoy(),origen,objeto:null};
+    if(typeof HabCarta!=='undefined'){const h=HabCarta.sortear(carta.especieId,rng);if(h){c.habilidad=h.hab;c.habSlot=h.slot}}   // habilidad sorteada (ver habilidades-carta.js)
     partida.box.push(c);
     return c;
   }

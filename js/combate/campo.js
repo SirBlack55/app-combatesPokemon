@@ -27,7 +27,7 @@ function ponerHaz(m,k){
 }
 // Al entrar un Pokémon (luchadores.js, spawn)
 function aplicaHaz(m){
- const h=campo.haz[m.side],vuela=m.types.includes('flying');
+ const h=campo.haz[m.side],vuela=m.types.includes('flying')||!!gancho('inmune',m,'ground');
  if(h.spikes&&!vuela)dotDano(m,[0,.125,.1667,.25][h.spikes],'#fdba74');
  if(h.tspikes&&!vuela){if(m.types.includes('poison'))delete h.tspikes;else aplicarEst(m,h.tspikes>1?'tox':'psn',null)}
  if(h.rocks&&!m.dead)dotDano(m,.125*tEff('rock',m.types),'#a8a29e');
@@ -92,6 +92,7 @@ function efTipo(t,tg){
  const V=tg.vol;let ts=tg.types;
  if(V&&V.ident)ts=ts.filter(x=>!((x=='ghost'&&(t=='normal'||t=='fighting'))||(x=='dark'&&t=='psychic')));
  if(V&&V.levit&&t=='ground')return 0;
+ if(gancho('inmune',tg,t))return 0;   // habilidades y objetos (Levitación...)
  return tEff(t,ts);
 }
 // Un golpe contra alguien que se protege (hit lo llama y se detiene)
