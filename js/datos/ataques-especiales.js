@@ -152,3 +152,85 @@ X('after-you ally-switch spotlight follow-me rage-powder helping-hand instruct q
 X('quick-guard wide-guard mat-block crafty-shield','Protección de grupo: no aplica en 1 contra 1',{nada:1});
 X('trick switcheroo bestow embargo magic-room imprison snatch','Depende de objetos o habilidades: aún no existen',{nada:1});
 X('metronome assist nature-power me-first sleep-talk transform conversion-2 gravity','Depende de otros ataques o formas: aún sin implementar',{nada:1});
+
+// ---------- Tanda 4: lo que salía en la auditoría ----------
+// Dos turnos: k:'carga' (se concentra ~0,9 s y luego ataca) · k:'inv' (desaparece ~0,8 s y luego ataca; v = dónde se esconde)
+// c = color · s = stats que gana al cargar · sun/rain = si hay ese clima no necesita cargar
+const DT={
+ 'solar-beam':{k:'carga',c:'#fde047',sun:1},'solar-blade':{k:'carga',c:'#fde047',sun:1},'razor-wind':{k:'carga',c:'#e0f2fe'},
+ 'skull-bash':{k:'carga',c:'#e5e7eb',s:{def:1}},'sky-attack':{k:'carga',c:'#fef3c7'},'freeze-shock':{k:'carga',c:'#a5f3fc'},
+ 'ice-burn':{k:'carga',c:'#fb923c'},'meteor-beam':{k:'carga',c:'#a8a29e',s:{spa:1}},'electro-shot':{k:'carga',c:'#fde047',s:{spa:1},rain:1},
+ 'dig':{k:'inv',v:'dig',c:'#a16207'},'dive':{k:'inv',v:'dive',c:'#38bdf8'},'bounce':{k:'inv',v:'sky',c:'#f9a8d4'},
+ 'sky-drop':{k:'inv',v:'sky',c:'#e0f2fe'},'phantom-force':{k:'inv',v:'ghost',c:'#7c3aed'},'shadow-force':{k:'inv',v:'ghost',c:'#4c1d95'},
+};
+// Ataques que se repiten: n=[mín,máx] usos seguidos · conf:1 = acaba confuso · (Rodar y Bola Hielo suben la potencia en cada uso)
+const REP={
+ 'outrage':{n:[2,3],conf:1},'thrash':{n:[2,3],conf:1},'petal-dance':{n:[2,3],conf:1},'raging-fury':{n:[2,3],conf:1},
+ 'uproar':{n:[3,3]},'rollout':{n:[5,5]},'ice-ball':{n:[5,5]},
+};
+// Efectos extra de ataques con daño (los lee secundarios, alterados.js)
+const SEC_X={'rapid-spin':'spin','mortal-spin':'spin','brick-break':'rompe','psychic-fangs':'rompe','raging-bull':'rompe','clear-smog':'smog',
+ 'smack-down':'baja','thousand-arrows':'baja','sparkling-aria':'cura','steel-roller':'terreno','ice-spinner':'terreno'};
+const TRAMPA_DANO=['anchor-shot','spirit-shackle','jaw-lock','thousand-waves'];   // hacen daño y además impiden escapar
+// Ataques de sonido (los bloquea Mordaza)
+const SONIDO=['hyper-voice','boomburst','sing','screech','growl','roar','supersonic','snore','uproar','bug-buzz','chatter','round','echoed-voice','relic-song','disarming-voice','overdrive','sparkling-aria','clanging-scales','noble-roar','torch-song','metal-sound','grass-whistle','perish-song','confide','alluring-voice','psychic-noise','howl','snarl','clangorous-soul','throat-chop','screech'];
+AIL.silence='sil';AIL_TXT.sil='Silencia';
+Object.assign(ESP,{
+ 'spit-up':{k:'pot',f:'stk',p:100},'hard-press':{k:'pot',f:'hardpress',p:100},
+ 'bide':{k:'contra',cat:'any',m:2,t:2.5,d:'Aguanta 2,5 s y devuelve x2 el daño recibido'},
+ 'veevee-volley':{p:90},'pika-papow':{p:90},
+ // potencia que depende de estados, de quién fue golpeado o del clima
+ 'hex':{k:'pot',f:'estado',b:65,req:'any',p:65},'infernal-parade':{k:'pot',f:'estado',b:60,req:'any',p:60},
+ 'venoshock':{k:'pot',f:'estado',b:65,req:'psn',p:65},'barb-barrage':{k:'pot',f:'estado',b:60,req:'psn',p:60},
+ 'facade':{k:'pot',f:'estado',b:70,req:'self',p:70},'smelling-salts':{k:'pot',f:'estado',b:70,req:'par',p:70},'wake-up-slap':{k:'pot',f:'estado',b:70,req:'slp',p:70},
+ 'brine':{k:'pot',f:'brine',p:65},
+ 'assurance':{k:'pot',f:'danado',b:60,qui:'rival',p:60},'revenge':{k:'pot',f:'danado',b:60,qui:'yo',p:60},'avalanche':{k:'pot',f:'danado',b:60,qui:'yo',p:60},
+ 'acrobatics':{k:'pot',f:'fija',v:110,p:110},'knock-off':{k:'pot',f:'fija',v:97,p:97},
+ 'stored-power':{k:'pot',f:'poder',p:20},'power-trip':{k:'pot',f:'poder',p:20},
+ 'fury-cutter':{k:'pot',f:'cutter',p:40},'echoed-voice':{k:'pot',f:'eco',p:40},'lash-out':{k:'pot',f:'lash',p:75},
+ 'rage-fist':{k:'pot',f:'ira',p:50},'last-respects':{k:'pot',f:'respetos',p:50},
+ 'rising-voltage':{k:'pot',f:'terreno',te:'elec',mul:2,p:70},'expanding-force':{k:'pot',f:'terreno',te:'psy',mul:1.5,p:80},
+ 'fishious-rend':{k:'pot',f:'primero',b:85,p:85},'bolt-beak':{k:'pot',f:'primero',b:85,p:85},
+ 'collision-course':{k:'pot',f:'eficaz',b:100,p:100},'electro-drift':{k:'pot',f:'eficaz',b:100,p:100},
+ 'hydro-steam':{k:'pot',f:'sol',b:80,p:80},
+ 'payback':{k:'pot',f:'despues',b:50,p:50},'temper-flare':{k:'pot',f:'fallo',b:75,p:75},'stomping-tantrum':{k:'pot',f:'fallo',b:75,p:75},
+ 'retaliate':{k:'pot',f:'aliado',b:70,p:70},
+ 'rollout':{k:'pot',f:'rollout',p:30},'ice-ball':{k:'pot',f:'rollout',p:30},
+ // cambian de tipo y suben de potencia con el clima / el terreno
+ 'weather-ball':{k:'wb',tipo:'clima',p:50},'terrain-pulse':{k:'wb',tipo:'terreno',p:50},
+ // usan otra estadística: od = defensa del rival que cuenta · ua = ataca con el Ataque del RIVAL · as = ataca con esta estadística propia · mx = la mayor de Atq/At. Esp.
+ 'psyshock':{k:'stat',od:'def',p:80},'psystrike':{k:'stat',od:'def',p:100},'secret-sword':{k:'stat',od:'def',p:85},
+ 'foul-play':{k:'stat',ua:1,p:95},'body-press':{k:'stat',as:'def',p:80},
+ 'photon-geyser':{k:'stat',mx:1,p:100},'light-that-burns-the-sky':{k:'stat',mx:1,p:200},'shell-side-arm':{k:'stat',mx:1,p:90},'tera-blast':{k:'stat',mx:1,p:80},
+});
+// Ataques de estado nuevos (claves nuevas: ac acupresión · sx intercambios · cc cambio de campo · ts tipo+stats · stk/swl reserva · rv revivir)
+X('acupressure','+2 a una estadística al azar',{ac:1});
+X('heart-swap','Intercambia los cambios de estadísticas con el rival',{sx:'heart',of:1});
+X('guard-swap','Intercambia los cambios de Defensa y Def. Esp. con el rival',{sx:'guard',of:1});
+X('power-swap','Intercambia los cambios de Ataque y At. Esp. con el rival',{sx:'power',of:1});
+X('speed-swap','Intercambia la Velocidad con el rival',{sx:'speed',of:1});
+X('power-trick','Intercambia su Ataque y su Defensa',{sx:'ptrick'});
+X('power-shift','Intercambia Ataque↔Defensa y At. Esp.↔Def. Esp.',{sx:'pshift'});
+X('power-split','Reparte Ataque y At. Esp. con el rival',{sx:'psplit',of:1});
+X('guard-split','Reparte Defensa y Def. Esp. con el rival',{sx:'gsplit',of:1});
+X('topsy-turvy','Invierte los cambios de estadísticas del rival',{sx:'topsy',of:1});
+X('psycho-shift','Pasa su estado alterado al rival',{sx:'trans',of:1});
+X('court-change','Intercambia las trampas de los dos lados',{cc:1});
+X('flower-shield','+1 Defensa a todos los de tipo Planta',{ts:{t:'leaf',s:{def:1}}});
+X('rototiller','+1 Ataque y At. Esp. a todos los de tipo Planta',{ts:{t:'leaf',s:{atk:1,spa:1}}});
+X('magnet-rise','Levita 5 s: inmune a Tierra',{v:'levit',yo:1});
+X('telekinesis','Levita al rival 3 s: sin esquivar y con Tierra inofensivo',{v:'levit',of:1});
+X('octolock','Atrapa al rival: baja Def y Def. Esp. cada segundo',{v:'octo',of:1});
+X('miracle-eye foresight odor-sleuth','Quita las inmunidades de tipo del rival',{v:'ident',of:1});
+X('take-heart','Cura estados y +1 At. Esp. y Def. Esp.',{cur:1,s:{spa:1,spd:1}});
+X('victory-dance','+1 Ataque, Defensa y Velocidad',{s:{atk:1,def:1,spe:1}});
+X('shelter','+2 Defensa',{s:{def:2}});
+X('lunar-blessing','Cura 25% de PS y los estados',{h:.25,cur:1});
+X('revival-blessing','Un aliado caído vuelve al equipo',{rv:1});
+X('stockpile','Acumula una reserva (hasta 3): +1 Def y Def. Esp. cada una',{stk:1});
+X('swallow','Gasta la reserva y cura 25/50/100% de PS',{swl:1});
+X('geomancy','+2 At. Esp., Def. Esp. y Velocidad',{s:{spa:2,spd:2,spe:2}});
+X('tidy-up','+1 Ataque y Velocidad; quita las trampas',{s:{atk:1,spe:1},ha:'limpia'});
+X('strength-sap','Rival −1 Ataque y se cura',{o:{atk:-1},h:.3,of:1});
+X('worry-seed simple-beam entrainment gastro-acid skill-swap role-play doodle','Depende de habilidades: aún no existen',{nada:1});
+X('recycle corrosive-gas teatime powder electrify grudge healing-wish lunar-dance shed-tail max-guard ion-deluge aromatic-mist','Depende de objetos, habilidades o aliados: aún sin implementar',{nada:1});

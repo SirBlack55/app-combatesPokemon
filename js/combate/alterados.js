@@ -36,6 +36,11 @@ const VOL={
  lscreen:{n:'Pantalla Luz',c:'#fcd34d',tag:'PAN',l:10},         // daño especial x0,6
  aveil:{n:'Velo Aurora',c:'#a5f3fc',tag:'AUR',l:10},            // todo el daño x0,6
  tail:{n:'Viento Afín',c:'#bae6fd',tag:'VIE',l:8},              // velocidad x2
+ levit:{n:'Levitando',c:'#a5b4fc',tag:'LEV',l:5},                // inmune a Tierra
+ octo:{n:'Octobrazo',c:'#f472b6',tag:'OCT',l:8,tick:{def:-1,spd:-1}},   // velocidad x0,6 y baja Def y Def. Esp. cada segundo
+ ident:{n:'Identificado',c:'#fde68a',tag:'IDE',l:20},            // pierde las inmunidades de tipo
+ sil:{n:'Silenciado',c:'#94a3b8',tag:'SIL',l:3},                 // sin ataques de sonido
+ furia:{n:'Furia',c:'#f97316',tag:'FUR',l:12,fijo:1},            // repite su ataque (Atropello, Pataleta...)
  curse:{n:'Maldito',c:'#6b21a8',tag:'MAL',l:12,dot:.06},     // 6 % de PS por segundo (Maldición de un Fantasma)
  focus:{n:'Concentrado',c:'#fb923c',tag:'FOC',l:20},            // críticos 33 %
  sub:{n:'Sustituto',c:'#fbbf24',tag:'SUS',l:60,fijo:1},         // m.vol.sub.hp = vida del señuelo
@@ -100,7 +105,8 @@ function tickEst(m,dt){
  if(m.dead||!m.vol)return;
  for(const k of Object.keys(m.vol)){
   const s=m.vol[k],V=VOL[k];s.l-=dt;s.t+=dt;
-  if(s.t>=1&&(V.dot||V.heal)){s.t-=1;
+  if(s.t>=1&&(V.dot||V.heal||V.tick)){s.t-=1;
+   if(V.tick)stg(m,V.tick);
    if(V.dot&&(k!='nmare'||(m.ail&&m.ail.k=='slp'))){const d=dotDano(m,V.dot,V.c);
     if(k=='seed'&&s.by&&!s.by.dead&&d>0)curaPS(s.by,d/s.by.max)}
    if(m.dead)return;
@@ -136,6 +142,14 @@ function secundarios(s,o,tg,d,primero){
   else{dotDano(o,Math.max(1,Math.round(d*-s.dr/100))/o.max,'#f87171');txt.push({x:o.x,y:o.y-56,s:'¡Retroceso!',c:'#f87171',l:1,sm:1})}
  }
  if(!primero)return;
+ if(s.x)switch(s.x){   // efectos extra por nombre (SEC_X)
+  case'spin':campo.haz[o.side]={};if(o.vol){delete o.vol.trap;delete o.vol.seed}break;
+  case'rompe':if(tg.vol){delete tg.vol.reflect;delete tg.vol.lscreen;delete tg.vol.aveil}break;
+  case'smog':for(const q in tg.stg)tg.stg[q]=0;break;
+  case'baja':if(tg.vol)delete tg.vol.levit;break;
+  case'cura':if(tg.ail&&tg.ail.k=='brn')tg.ail=null;break;
+  case'terreno':campo.te=null;break;
+ }
  if(s.ss&&rnd()*100<s.ps&&!o.dead)stg(o,s.ss);
  if(tg.hp<=0||tg.dead){if(s.sw=='yo'&&!o.dead)forzarCambio(o);return}
  if(s.a&&rnd()*100<s.pa)aplicarEst(tg,s.a,o);
@@ -145,8 +159,8 @@ function secundarios(s,o,tg,d,primero){
 }
 // Etiquetas pequeñas junto a la barra de vida (dibujo.js) y en el panel de cada equipo (hud.js)
 function etiquetas(m,y){
- if(m.prot){   // burbuja de protección mientras dure
-  cx.save();cx.globalAlpha=.35+.15*Math.sin(T*18);cx.strokeStyle=m.prot.k=='endure'?'#fde68a':'#93c5fd';cx.fillStyle=cx.strokeStyle;cx.lineWidth=3;
+ if(m.prot&&!m.prot.vis){   // barrera sin animación propia: burbuja sencilla mientras dure
+  cx.save();cx.globalAlpha=.35+.15*Math.sin(T*18);cx.strokeStyle=cx.fillStyle=(typeof PROT_COL!=='undefined'&&PROT_COL[m.prot.k])||'#93c5fd';cx.lineWidth=3;
   cx.beginPath();cx.ellipse(m.x,m.y-28,34,38,0,0,7);cx.stroke();cx.globalAlpha*=.25;cx.fill();cx.restore();
  }
  const l=[];if(m.ail)l.push(EST[m.ail.k]);for(const k in m.vol||{})l.push(VOL[k]);

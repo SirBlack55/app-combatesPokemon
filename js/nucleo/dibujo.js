@@ -32,7 +32,7 @@ function drawApi(m){const o=TY[m.t];if(Math.abs(Math.cos(m.a))>.25)m.fl=Math.cos
  cx.imageSmoothingEnabled=false;if(m.flash>0)cx.filter='brightness(4)';
  if(im&&im.naturalWidth){cx.save();cx.translate(0,16-(m.z||0));cx.rotate(Math.sin(m.ph*2)*.06+(m.tilt||0));cx.scale(m.sx*(1+.16*wl+(m.lunge>0?.18:0)+(Math.abs(m.tilt||0)>.3?.15:0)),1-.2*wl-(m.lunge>0?.1:0)-(Math.abs(m.tilt||0)>.3?.12:0));cx.drawImage(im,-h/2,-h+10-b,h,h);cx.restore()}else{cx.fillStyle=o.c[0];cx.beginPath();cx.arc(0,-12,18,0,7);cx.fill()}
  cx.filter='none';cx.imageSmoothingEnabled=true}
-function drawM(m){cx.save();cx.translate(m.x,m.y);if(m.dead){cx.globalAlpha=Math.max(0,m.fade/1.2);cx.scale(m.fade/1.2+.3,m.fade/1.2+.3)}
+function drawM(m){cx.save();cx.translate(m.x,m.y);if(m.hide){invDraw(m);cx.restore();return}if(m.invA!=null)cx.globalAlpha=m.invA;if(m.dead){cx.globalAlpha=Math.max(0,m.fade/1.2);cx.scale(m.fade/1.2+.3,m.fade/1.2+.3)}
  const zs=Math.max(.25,1-(m.z||0)/450);cx.fillStyle='rgba(0,0,0,'+.25*zs+')';cx.beginPath();cx.ellipse(3,7,20*zs,14*zs,0,0,7);cx.fill();
  if(m.enter>0){const k=Math.max(.05,1-m.enter/.7);cx.scale(k,k)}
  cx.strokeStyle=m.side?"#ef4444":"#3b82f6";cx.lineWidth=3;cx.beginPath();cx.ellipse(0,5,24,17,0,0,7);cx.stroke();

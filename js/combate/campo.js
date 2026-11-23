@@ -2,10 +2,12 @@
 // cambios de Pokémon y pesos de la IA de los ataques de estado nuevos. Se reinicia en cada combate (nuevoCampo).
 // Duraciones y fuerzas: constantes de abajo.
 const CAMPO_L=15,CLIMA_DOT=.03,TERRENO_CURA=.03;
-const nuevoCampo=()=>({cl:null,te:null,sa:null,dep:{},haz:[{},{}],tc:0});
+const nuevoCampo=()=>({cl:null,te:null,sa:null,dep:{},haz:[{},{}],tc:0,gp:[]});   // gp = golpes pendientes de los ataques de varios golpes
 var campo=nuevoCampo();
 const salaK=k=>!!(campo.sa&&campo.sa.k==k);
 const NOM_CAMPO={sun:'☀ Sol',rain:'🌧 Lluvia',sand:'🏜 Tormenta de arena',hail:'❄ Granizo',elec:'⚡ Campo eléctrico',leaf:'🌿 Campo de hierba',mist:'🌫 Campo de niebla',psy:'🔮 Campo psíquico',trick:'🔄 Sala Trampa',wonder:'🔀 Sala Extraña'};
+// Color de la esfera de cada protección (proteccion.js)
+const PROT_COL={protect:'#38bdf8',endure:'#fbbf24',king:'#e2e8f0',spiky:'#84cc16',bunker:'#c084fc',obstruct:'#f87171',silk:'#f9a8d4',bulwark:'#fb923c'};
 const NOM_HAZ={spikes:'Púas',tspikes:'Púas tóxicas',rocks:'Rocas',web:'Red'};
 
 function fallo(m,s='¡Falló!'){txt.push({x:m.x,y:m.y-46,s,c:'#cbd5e1',l:1,sm:1})}
@@ -31,8 +33,23 @@ function aplicaHaz(m){
  if(h.rocks&&!m.dead)dotDano(m,.125*tEff('rock',m.types),'#a8a29e');
  if(h.web&&!vuela&&!m.dead)stg(m,{spe:-1});
 }
+// Ataques de varios golpes: el primero lo da hit(); los demás se agendan cada .11 s (nHits sortea cuántos)
+function nHits([mn,mx]){
+ if(mn>=mx)return mn;
+ if(mn==2&&mx==5)return pickP([2,3,4,5],[3,3,1,1]);
+ return mn+Math.floor(rnd()*(mx-mn+1));
+}
+function agendaHits(o,tg,dm,t,cat,fx){
+ const n=nHits(o.last.hits)-1;
+ for(let i=1;i<=n;i++)campo.gp.push({t:.11*i,o,tg,dm:o.last.ramp?dm*(i+1):dm,tt:t,cat,fx,sec:o.last.sec,sty:o.last.sty});
+}
 function tickCampo(dt){
  const c=campo;
+ if(c.gp.length){
+  for(const g of c.gp)g.t-=dt;
+  const listos=c.gp.filter(g=>g.t<=0);c.gp=c.gp.filter(g=>g.t>0);
+  for(const g of listos){if(g.tg.dead||g.o.dead)continue;hit(g.tg,g.dm,g.tt,g.o,{cat:g.cat,f:false,mh:1,fx:g.fx,sec:g.sec});vfx(g.tg.x,g.tg.y-20,g.sty,g.tt)}
+ }
  for(const k of['cl','te','sa'])if(c[k]&&(c[k].l-=dt)<=0)c[k]=null;
  for(const k of Object.keys(c.dep))if((c.dep[k]-=dt)<=0)delete c.dep[k];
  c.tc+=dt;
@@ -67,23 +84,34 @@ function accEf(m,tg,p){
 function critP(o,tg,e){
  if(tg.vol&&tg.vol.lucky)return 0;
  if(o.lf&&(!e||e.f)){o.lf=0;return 1}
- return o.vol&&o.vol.focus?.33:.0625;
+ const et=((o.last&&o.last.cr)||0)+(o.vol&&o.vol.focus?2:0);   // etapas de crítico: 0 → 6,25 % · 1 → 12,5 % · 2 → 50 % · 3 → 100 %
+ return[.0625,.125,.5,1][Math.min(3,et)];
+}
+// Efectividad de un tipo contra un luchador, con Levitación (inmune a Tierra) e Identificado (quita inmunidades de Fantasma/Siniestro)
+function efTipo(t,tg){
+ const V=tg.vol;let ts=tg.types;
+ if(V&&V.ident)ts=ts.filter(x=>!((x=='ghost'&&(t=='normal'||t=='fighting'))||(x=='dark'&&t=='psychic')));
+ if(V&&V.levit&&t=='ground')return 0;
+ return tEff(t,ts);
 }
 // Un golpe contra alguien que se protege (hit lo llama y se detiene)
 function protegido(tg,o,e){
+ const cat=(e&&e.cat)||(o.plan&&o.plan.cat)||(o.last&&o.last.cat)||'phy';
  // cada golpe bloqueado se nota: el primero con texto grande, los demás (ataques de varios golpes) con uno pequeño
  if(!e||e.f)txt.push({x:tg.x,y:tg.y-48,s:'¡Se protegió!',c:'#93c5fd',l:1,sm:1});
  else if(T-(tg.pbT||-9)>.2)txt.push({x:tg.x+R(-12,12),y:tg.y-40,s:'Bloqueado',c:'#bfdbfe',l:.5,sm:1});
- tg.pbT=T;tg.flash=.05;
- ring(tg.x,tg.y,'#93c5fd',40,.4);
- if(e||o.dead)return;   // el efecto de contacto solo lo activan las embestidas
+ const col=PROT_COL[tg.prot.k]||'#93c5fd',a=Math.atan2(o.y-tg.y,o.x-tg.x);
+ tg.pbT=T;tg.pbA=a;tg.flash=.05;o.failT=T;   // proteccion.js ilumina la esfera por ese lado
+ burst(tg.x+Math.cos(a)*40,tg.y-28+Math.sin(a)*34,col,6,130,true);
+ if(o.dead||cat!='phy'||(e&&!e.f))return;   // efecto de contacto: ataques FÍSICOS (en los de varios golpes, solo el primero)
+ tg.pxT=T;
  switch(tg.prot.k){
   case'spiky':dotDano(o,.125,'#f87171');break;
   case'king':stg(o,{atk:-1});break;
-  case'bunker':aplicarEst(o,'psn',tg);break;
+  case'bunker':aplicarEst(o,'psn',tg,true);break;
   case'obstruct':stg(o,{def:-2});break;
   case'silk':stg(o,{spe:-1});break;
-  case'bulwark':aplicarEst(o,'brn',tg);break;
+  case'bulwark':aplicarEst(o,'brn',tg,true);break;
  }
 }
 function protege(m,k){
@@ -120,7 +148,7 @@ function wtEfx(m,e,o){
   if(e.req&&!(campo.cl&&campo.cl.k==e.req))return 0;
   return V[ks[0]]?0:.8}
  if(e.cu)return m.types.includes('ghost')&&fr<=.6?0:1;
- if(e.cur)return m.ail||V.cnf||V.inf?3:0;
+ if(e.cur&&!e.s&&!e.h)return m.ail||V.cnf||V.inf?3:0;
  if(e.pu)return o&&Object.values(o.stg).some(x=>x>=2)?1.5:0;
  if(e.hz)return o&&(Object.values(o.stg).some(x=>x>=2)||Object.values(m.stg).some(x=>x<=-2))?1.5:0;
  if(e.pd)return o&&fr<o.hp/o.max-.2?1.5:0;
@@ -131,6 +159,20 @@ function wtEfx(m,e,o){
  if(e.mi)return o&&o.last&&o.last.cat!==undefined&&!m.mv.includes(o.last)?.8:0;
  if(e.sw)return e.sw=='yo'?(fr<.4?1.5:.2):.6;
  if(e.sp||e.ty||e.ta||e.tys||e.cv||e.rt)return o?.4:0;
+ if(e.ac)return .8;
+ if(e.sx){const k=e.sx;if(!o)return 0;
+  if(k=='heart'||k=='topsy')return Object.values(o.stg).some(x=>x>=2)||Object.values(m.stg).some(x=>x<=-2)?1.5:0;
+  if(k=='guard'||k=='power')return Object.values(m.stg).some(x=>x<=-2)?1.2:0;
+  if(k=='speed')return o.st.spe>m.st.spe*1.2?1:0;
+  if(k=='ptrick'||k=='pshift')return m.st.def>m.st.atk*1.3?.8:0;
+  if(k=='psplit')return o.st.atk>m.st.atk*1.2||o.st.spa>m.st.spa*1.2?1:0;
+  if(k=='gsplit')return o.st.def<m.st.def*.8||o.st.spd<m.st.spd*.8?0:.6;
+  if(k=='trans')return m.ail&&!o.ail&&puedeEst(o,m.ail.k,m)?2:0}
+ if(e.cc){const a=Object.keys(campo.haz[m.side]).length,b=Object.keys(campo.haz[1-m.side]).length;return a>b?2:0}
+ if(e.ts)return m.types.includes(e.ts.t)||(o&&o.types.includes(e.ts.t))?.6:0;
+ if(e.stk)return(m.stk||0)<3?.9:0;
+ if(e.swl)return m.stk&&fr<.6?2:0;
+ if(e.rv)return team[m.side]&&team[m.side].some(u=>u.dead)?1.5:0;
  return undefined;
 }
 // Dibujo del clima y etiquetas del campo (dibujo.js, al final de draw)

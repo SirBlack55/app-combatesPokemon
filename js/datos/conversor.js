@@ -10,11 +10,22 @@ function secDe(d,mt){const s={},k=ailDe(d,mt);
  if(mt.flinch_chance>0)s.f=mt.flinch_chance;
  if(mt.drain)s.dr=mt.drain;
  if(CAMBIA_YO.includes(d.name))s.sw='yo';else if(CAMBIA_RIVAL.includes(d.name))s.sw='rival';
+ if(SEC_X[d.name])s.x=SEC_X[d.name];
+ if(TRAMPA_DANO.includes(d.name)){s.a='net';s.pa=100}
  const o={},y={};for(const c of d.stat_changes||[]){const q=SNM[c.stat.name];if(q&&!SIN_STATS.includes(d.name))(c.change>0||AUTOBAJA.includes(d.name)?y:o)[q]=Math.max(-3,Math.min(3,c.change))}
  if(Object.keys(o).length)s.so=o;if(Object.keys(y).length)s.ss=y;
  if(s.so||s.ss)s.ps=mt.stat_chance||100;
  return Object.keys(s).length?s:undefined}
 const secX=(d,mt)=>{const s=secDe(d,mt);return s?{sec:s}:{}};
+// Rasgos de un ataque con daño: dt dos turnos · rep se repite · pr prioridad · cr crítico alto · hits [mín,máx] golpes (solo si el ataque da un golpe por lanzamiento)
+function rasgos(d,mt,c){const o={};
+ if(DT[d.name]&&!CUSTOM[d.name])o.dt=DT[d.name];
+ if(REP[d.name])o.rep=REP[d.name];
+ if(d.priority>0)o.pr=d.priority;
+ if(mt.crit_rate>0)o.cr=mt.crit_rate;
+ if((mt.max_hits||0)>1&&c===1&&!REP[d.name])o.hits=[mt.min_hits||mt.max_hits,mt.max_hits];
+ if((d.name=='triple-kick'||d.name=='triple-axel')&&c===1){o.hits=[3,3];o.ramp=1}   // 3 golpes: potencia x1, x2, x3
+ return o}
 function conv0(d){const t=TN[d.type.name]||'normal',nm=(d.names.find(x=>x.language.name=='es')||{name:d.name}).name,cl=d.damage_class.name,mt=d.meta||{};
 
  const F=ESP[d.name];   // efectos especiales (datos/ataques-especiales.js)
@@ -35,7 +46,7 @@ function conv0(d){const t=TN[d.type.name]||'normal',nm=(d.names.find(x=>x.langua
   return{n:nm,key:d.name,p:0,cd:(mt.healing>0?18:9)*1.4,c:1,r:of?320:999,u:0,t,cat:'sta',ef,acc:of?(d.accuracy||0):0}}
  if(!d.power&&!(F&&F.p))return null;const P=d.power||F.p,phy=cl=='physical',acc=d.accuracy||100;let sty=phy?'hit':'orb';for(const[r,k]of STY)if(r.test(d.name)){sty=k;break}
  if(F&&F.sty)sty=F.sty;if(!phy&&MEL.includes(sty))sty='orb';
- if(phy&&MEL.includes(sty))return{n:nm,key:d.name,p:P,cd:(1+P/45)*1.4,c:1,r:55,u:0,tk:1,t,cat:'phy',acc,sty,...fxDe(F),...secX(d,mt)};
+ if(phy&&MEL.includes(sty))return{n:nm,key:d.name,p:P,cd:(1+P/45)*1.4,c:1,r:55,u:0,tk:1,t,cat:'phy',acc,sty,...fxDe(F),...secX(d,mt),...rasgos(d,mt,1)};
  const u=!phy&&P>=110,K=u?ultK(t):({beam:'s',storm:'z',quake:'q',wave:'w'}[sty]||(t=='elec'?'b':'p')),c=K=='s'?5:K=='z'?(u?6:5):K=='q'||K=='w'||K=='x'?1:K=='m'?10:K=='b'?(u?6:P<=60?1:P<=90?2:3):(P<=50?1:P<=70?3:P<=90?5:6);
- return{n:nm,key:d.name,p:u&&K=='m'?P*1.8:P,cd:(u?6:1+P/45)*1.4,c:F?1:c,r:u?300:P<=70?230:260,u:u?1:0,t,cat:phy?'phy':'spe',acc,sty,...fxDe(F),...secX(d,mt)}}
+ return{n:nm,key:d.name,p:u&&K=='m'?P*1.8:P,cd:(u?6:1+P/45)*1.4,c:F&&F.k!='stat'&&F.k!='wb'?1:c,r:u?300:P<=70?230:260,u:u?1:0,t,cat:phy?'phy':'spe',acc,sty,...fxDe(F),...secX(d,mt),...rasgos(d,mt,F&&F.k!='stat'&&F.k!='wb'?1:c)}}
 function conv(d){const mv=conv0(d);if(mv&&CUSTOM[d.name])Object.assign(mv,CUSTOM[d.name].mv);return mv}
