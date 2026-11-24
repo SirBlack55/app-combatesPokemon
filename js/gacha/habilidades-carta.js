@@ -2,7 +2,7 @@
 //  · carta.habilidad = clave de la habilidad (PokéAPI) · carta.habSlot = hueco de la especie: 0, 1 (normales) o 'o' (oculta) · carta.objeto = clave de OBJ_EQ o null
 //  · La habilidad se sortea al conseguir la carta con las de su especie (HABILIDADES_ESP, generado por la herramienta 🧬 Habilidades): la oculta sale rara.
 //  · Al evolucionar se conserva el hueco (la habilidad cambia si la nueva especie tiene otra en ese hueco).
-//  · Un objeto se equipa gastando 1 unidad del inventario para siempre; si ya había otro, ese se pierde. Los de un solo uso se pierden al gastarse en combate.
+//  · Un objeto se equipa sacando 1 unidad del inventario; si ya había otro, vuelve al inventario (no se pierde). Se puede quitar (vuelve al inventario). Solo se pierden los de un solo uso gastados en combate.
 // Va DESPUÉS de evoluciones-datos.js (registra los objetos nuevos en OBJETOS) y ANTES de guardado.js.
 const HabCarta=(()=>{
  const P_OCULTA=.05;   // probabilidad de la habilidad oculta (si la especie la tiene)
@@ -36,19 +36,25 @@ const HabCarta=(()=>{
  };
  const infoObj=k=>{const O=typeof OBJ_EQ!=='undefined'&&OBJ_EQ[k];return O?{n:O.n,i:O.i||'📦',d:O.d||''}:{n:cap(k),i:'📦',d:''}};
  const objetosEquipables=()=>typeof OBJ_EQ!=='undefined'?Object.keys(OBJ_EQ):[];
- // Equipa el objeto k gastando 1 del inventario. Devuelve {ok, perdido (el que había antes) | motivo}
+ // Equipa el objeto k sacando 1 del inventario; el que llevaba la carta (si había) vuelve al inventario. Devuelve {ok, devuelto (el que había antes) | motivo}
  function equipar(p,c,k){
   if(typeof OBJ_EQ==='undefined'||!OBJ_EQ[k])return{ok:false,motivo:'Ese objeto no se puede equipar'};
   const o=p.objetos||(p.objetos={});
   if(!(o[k]>0))return{ok:false,motivo:'No te quedan'};
   o[k]--;if(o[k]<=0)delete o[k];
-  const perdido=c.objeto||null;c.objeto=k;return{ok:true,perdido};
+  const devuelto=c.objeto||null;if(devuelto)o[devuelto]=(o[devuelto]||0)+1;
+  c.objeto=k;return{ok:true,devuelto};
+ }
+ // Quita el objeto de la carta y lo devuelve al inventario. Devuelve {ok, quitado | motivo}
+ function quitar(p,c){
+  if(!c.objeto)return{ok:false,motivo:'No lleva objeto'};
+  const o=p.objetos||(p.objetos={}),k=c.objeto;o[k]=(o[k]||0)+1;c.objeto=null;return{ok:true,quitado:k};
  }
  // Objetos nuevos → inventario (nombre e icono) y objetos de prueba
  if(typeof OBJETOS!=='undefined'&&typeof OBJ_EQ!=='undefined')for(const k of Object.keys(OBJ_EQ))if(!OBJETOS[k])OBJETOS[k]=[OBJ_EQ[k].n,OBJ_EQ[k].i||'📦'];
  if(typeof OBJETOS_PRUEBA!=='undefined')Object.assign(OBJETOS_PRUEBA,{'leftovers':2,'life-orb':2,'sitrus-berry':5});
  // Cartas de prueba con habilidad y objeto: [especie, nivel, arquetipo, género, estrellas, habilidad, objeto]
  const CARTAS_PRUEBA=[[130,30,'fisico',null,0,'intimidate','leftovers'],[92,30,'especial',null,0,'levitate','life-orb'],[291,30,'fisico',null,0,'speed-boost','sitrus-berry']];
- return{P_OCULTA,sortear,slotDe,porSlot,dar,alEvolucionar,infoHab,infoObj,objetosEquipables,equipar,CARTAS_PRUEBA};
+ return{P_OCULTA,opciones,quitar,sortear,slotDe,porSlot,dar,alEvolucionar,infoHab,infoObj,objetosEquipables,equipar,CARTAS_PRUEBA};
 })();
 if(typeof module!=='undefined')module.exports=HabCarta;

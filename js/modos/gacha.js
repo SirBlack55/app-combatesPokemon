@@ -612,14 +612,15 @@ const Gacha=(()=>{
     for(const k of lista){
       const x=HabCarta.infoObj(k),bt=h('button','text-align:left',`${x.i} <b>${esc(x.n)}</b> ×${tengo(k)}<br><small style="opacity:.75">${esc(x.d)}</small>`);
       bt.onclick=async()=>{
-        const msg=c.objeto?`¿Cambiar ${HabCarta.infoObj(c.objeto).n} por ${x.n}? El objeto actual se pierde para siempre.`:`¿Equipar ${x.n}? Se gasta una unidad y no se puede recuperar.`;
-        if(!confirm(msg))return;
+        if(c.objeto===k)return;
         const r=HabCarta.equipar(partida,c,k);if(!r.ok){alert(r.motivo);return}
-        await guardar();pantallaDetalle(c,`Equipado: ${x.n}.`);
+        await guardar();pantallaDetalle(c,r.devuelto?`Equipado: ${x.n}. ${HabCarta.infoObj(r.devuelto).n} vuelve al inventario.`:`Equipado: ${x.n}.`);
       };
       pn.append(bt);
     }
-    box.append(b,pn);return box;
+    box.append(b,pn);
+    if(c.objeto){const q=h('button','align-self:flex-start','↩ Quitar objeto');q.onclick=async()=>{const n=HabCarta.infoObj(c.objeto).n;HabCarta.quitar(partida,c);await guardar();pantallaDetalle(c,`${n} vuelve al inventario.`)};box.append(q)}
+    return box;
   }
 
   // ---------- Fusión ----------
