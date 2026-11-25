@@ -57,7 +57,7 @@ function estMul(m,k){
  const cl=campo.cl&&campo.cl.k;
  if(k=='spd'&&cl=='sand'&&m.types.includes('rock'))f*=1.5;
  if(k=='def'&&cl=='hail'&&m.types.includes('ice'))f*=1.5;
- return f;
+  return f*ganchoMul('statMul',m,k)*statGlobal(m,k);   // habilidades y objetos (Poder Puro, Agallas, Nado Rápido...)
 }
 
 function puedeEst(m,k,por){

@@ -13,7 +13,7 @@ function auditar(ESP,INFO,H,O,holdables=[]){
  for(const id in ESP){const[n,o]=ESP[id];for(const a of new Set([...(n||[]),o].filter(Boolean)))uso[a]=(uso[a]||0)+1}
  const G={},pend=[];
  for(const a of Object.keys(uso)){
-  const it={id:a,n:(H[a]&&H[a].n)||(INFO[a]||[])[0]||cap(a),especies:uso[a]};
+  const it={id:a,n:(INFO[a]||[])[0]||(H[a]&&H[a].n)||cap(a),especies:uso[a]};
   if(H[a]){const g=H[a].g||'Otras';(G[g]=G[g]||[]).push(it)}else pend.push(it);
  }
  pend.sort((a,b)=>b.especies-a.especies||a.n.localeCompare(b.n));

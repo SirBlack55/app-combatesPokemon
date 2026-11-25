@@ -2,7 +2,8 @@
 // cambios de Pokémon y pesos de la IA de los ataques de estado nuevos. Se reinicia en cada combate (nuevoCampo).
 // Duraciones y fuerzas: constantes de abajo.
 const CAMPO_L=15,CLIMA_DOT=.03,TERRENO_CURA=.03;
-const nuevoCampo=()=>({cl:null,te:null,sa:null,dep:{},haz:[{},{}],tc:0,gp:[]});   // gp = golpes pendientes de los ataques de varios golpes
+// El clima se lee y se escribe como campo.cl; mientras algún luchador lo anule (Cielo Despejado, Bucle Aire) se ve como null y no corre su tiempo.
+const nuevoCampo=()=>({_cl:null,get cl(){return this._cl&&!(typeof climaAnulado==='function'&&climaAnulado())?this._cl:null},set cl(v){this._cl=v},te:null,sa:null,dep:{},haz:[{},{}],tc:0,gp:[]});   // gp = golpes pendientes de los ataques de varios golpes
 var campo=nuevoCampo();
 const salaK=k=>!!(campo.sa&&campo.sa.k==k);
 const NOM_CAMPO={sun:'☀ Sol',rain:'🌧 Lluvia',sand:'🏜 Tormenta de arena',hail:'❄ Granizo',elec:'⚡ Campo eléctrico',leaf:'🌿 Campo de hierba',mist:'🌫 Campo de niebla',psy:'🔮 Campo psíquico',trick:'🔄 Sala Trampa',wonder:'🔀 Sala Extraña'};
@@ -58,8 +59,8 @@ function tickCampo(dt){
  for(const m of mons.slice()){
   if(m.dead||m.enter>0)continue;
   const cl=c.cl&&c.cl.k;
-  if(cl=='sand'&&!m.types.some(t=>['rock','ground','steel'].includes(t)))dotDano(m,CLIMA_DOT,'#d6a550');
-  else if(cl=='hail'&&!m.types.includes('ice'))dotDano(m,CLIMA_DOT,'#a5f3fc');
+  if(cl=='sand'&&!m.types.some(t=>['rock','ground','steel'].includes(t))&&!gancho('sinClimaDano',m,'sand'))dotDano(m,CLIMA_DOT,'#d6a550');
+  else if(cl=='hail'&&!m.types.includes('ice')&&!gancho('sinClimaDano',m,'hail'))dotDano(m,CLIMA_DOT,'#a5f3fc');
   if(!m.dead&&c.te&&c.te.k=='leaf'&&m.hp<m.max){const r=Math.min(Math.round(m.max*TERRENO_CURA),m.max-m.hp);m.hp+=r;txt.push({x:m.x,y:m.y-40,s:'+'+r,c:'#4ade80',l:.7,sm:1})}
  }
 }
@@ -76,15 +77,17 @@ function campoMul(t,tg,cat){
 // Precisión efectiva (estados de precisión/evasión, Fijar Blanco, clima)
 function accEf(m,tg,p){
  if(m.lock){m.lock=0;return 1e9}
+ if(gancho('noFalla',m)||gancho('noFalla',tg))return 1e9;
  const c=campo.cl&&campo.cl.k,tr=p.key=='thunder'||p.key=='hurricane';
  if(c=='rain'&&tr||c=='hail'&&p.key=='blizzard')return 1e9;
  const s=Math.max(-6,Math.min(6,(m.stg.acc||0)-(tg.stg.eva||0)));
- return p.acc*(s>=0?(3+s)/3:3/(3-s))*(c=='sun'&&tr?.7:1);
+ return p.acc*(s>=0?(3+s)/3:3/(3-s))*(c=='sun'&&tr?.7:1)*ganchoMul('accMul',m,tg,p)*ganchoMul('accRec',tg,m,p);
 }
 function critP(o,tg,e){
  if(tg.vol&&tg.vol.lucky)return 0;
+ if(gancho('sinCrit',tg))return 0;   // Armadura Batalla, Caparazón
  if(o.lf&&(!e||e.f)){o.lf=0;return 1}
- const et=((o.last&&o.last.cr)||0)+(o.vol&&o.vol.focus?2:0);   // etapas de crítico: 0 → 6,25 % · 1 → 12,5 % · 2 → 50 % · 3 → 100 %
+ const et=((o.last&&o.last.cr)||0)+(o.vol&&o.vol.focus?2:0)+ganchoSum('critEt',o);   // etapas de crítico: 0 → 6,25 % · 1 → 12,5 % · 2 → 50 % · 3 → 100 %
  return[.0625,.125,.5,1][Math.min(3,et)];
 }
 // Efectividad de un tipo contra un luchador, con Levitación (inmune a Tierra) e Identificado (quita inmunidades de Fantasma/Siniestro)

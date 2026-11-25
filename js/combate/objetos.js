@@ -4,6 +4,7 @@ const OBJ_CFG={restos:.0156,vidasfera:{mul:1.3,retro:.1},zidra:{umbral:.5,cura:.
 // Baya que cura al bajar de cierta fracción de PS (no se come con Cura Bloqueada ni si está llena)
 function bayaCura(m,nombre,umbral,frac){
  if(m.dead||m.hp<=0||m.hp>m.max*umbral||m.hp>=m.max||(m.vol&&m.vol.hblock))return;
+ const r=rivalDe(m);if(r&&gancho('bloqBaya',r))return;   // Nerviosismo del rival
  gastarObj(m);curaPS(m,frac,'#fde047');
  txt.push({x:m.x,y:m.y-56,s:'¡'+nombre+'!',c:'#fde047',l:1.2,sm:1});
 }

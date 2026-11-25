@@ -32,7 +32,7 @@ const HabCarta=(()=>{
  const infoHab=k=>{
   if(!k)return{n:'—',d:'Sin habilidad (faltan los datos: carga habilidades-datos.js).',hecho:false};
   const H=typeof HAB!=='undefined'&&HAB[k],I=info_()[k]||[];
-  return{n:(H&&H.n)||I[0]||cap(k),d:(H&&H.d)||I[1]||'',hecho:!!H};
+  return{n:I[0]||(H&&H.n)||cap(k),d:(H&&H.d)||I[1]||'',hecho:!!H};   // el nombre oficial de la PokéAPI manda; el de la tabla es de reserva
  };
  const infoObj=k=>{const O=typeof OBJ_EQ!=='undefined'&&OBJ_EQ[k];return O?{n:O.n,i:O.i||'📦',d:O.d||''}:{n:cap(k),i:'📦',d:''}};
  const objetosEquipables=()=>typeof OBJ_EQ!=='undefined'?Object.keys(OBJ_EQ):[];
