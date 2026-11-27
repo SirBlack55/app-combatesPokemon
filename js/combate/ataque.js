@@ -3,10 +3,13 @@ function atk(m){let p=m.plan;const tg=m.tg;const pk=tg?ganchoMul('cdRec',tg,m):1
  m.cd=2*Math.pow(100/stat(m,'spe'),.5)*pk;m.mc[m.pi]=p.cd*pk;m.say=1.2;m.sayT=p.n;
  // Bola Climática / Pulso Terreno: cambian de tipo y potencia con el clima o el terreno
  if(p.fx&&p.fx.k=='wb'){const cl=p.fx.tipo=='clima',c=cl?campo.cl&&campo.cl.k:campo.te&&campo.te.k,M=cl?{sun:'fire',rain:'water',sand:'rock',hail:'ice'}:{elec:'elec',leaf:'leaf',mist:'fairy',psy:'psychic'};if(c&&M[c]){p={...p,t:M[c],p:100};m.plan=p}}
- m.last=p;if(fallaEst(m))return;(m.us=m.us||{})[m.pi]=1;
+ {const nt=ganchoVal('tipoAtq',m,p.t,p);if(nt!==p.t){p={...p,t:nt,cv:1};m.plan=p}}   // habilidades que cambian el tipo del ataque
+ m.last=p;if(fallaEst(m))return;
+ if(gancho('cancelaAtaque',m,p)){m.freeze=.5;m.plan=null;return}   // Holgazán: se salta el ataque
+(m.us=m.us||{})[m.pi]=1;
  if(p.ef&&p.ef.cp){const q=tg&&tg.last;if(!q||(q.ef&&q.ef.cp)){txt.push({x:m.x,y:m.y-46,s:'¡Falló!',c:'#cbd5e1',l:1,sm:1});m.freeze=.3;m.plan=null;return}m.plan=q;return atk(m)}
  if(p.cat=='sta'){if(tg&&ofensivoSt(p)&&conAtq(m,()=>gancho('bloqMove',tg,m,p))){txt.push({x:tg.x,y:tg.y-48,s:'No afecta',c:'#e2e8f0',l:1,sm:1});log(`${tn(m.t)} usó ${p.n}`);m.freeze=.35;m.plan=null;return}
-  if(p.ef&&p.ef.a&&!p.ef.a.yo&&p.acc&&rnd()*100>accEf(m,tg,p)){txt.push({x:tg.x,y:tg.y-30,s:'¡Falló!',c:'#cbd5e1',l:1,sm:1});m.freeze=.35;m.plan=null;return}const pr0=m.prot;applySt(m,tg,p);if(p.cu&&CUSTOM[p.cu]&&CUSTOM[p.cu].visual){CUSTOM[p.cu].visual(m,tg,p,pr0);if(m.prot&&m.prot!==pr0)m.prot.vis=1}log(`${tn(m.t)} usó ${p.n}`);m.freeze=.35;m.plan=null;return}
+  if(p.ef&&p.ef.a&&!p.ef.a.yo&&p.acc&&rnd()*100>accEf(m,tg,p)){txt.push({x:tg.x,y:tg.y-30,s:'¡Falló!',c:'#cbd5e1',l:1,sm:1});m.freeze=.35;m.plan=null;return}const pr0=m.prot;conAtq(m,()=>applySt(m,tg,p));if(p.cu&&CUSTOM[p.cu]&&CUSTOM[p.cu].visual){CUSTOM[p.cu].visual(m,tg,p,pr0);if(m.prot&&m.prot!==pr0)m.prot.vis=1}log(`${tn(m.t)} usó ${p.n}`);m.freeze=.35;m.plan=null;return}
  if(p.rep)repite(m,p);
  if(p.dt&&m.dtDone!==p){iniciaDosTurnos(m,tg,p);return}   // Rayo Solar, Excavar...: primero carga o se esconde
  m.dtDone=null;

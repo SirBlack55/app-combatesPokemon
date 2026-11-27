@@ -62,6 +62,7 @@ function estMul(m,k){
 
 function puedeEst(m,k,por){
  if(!m||m.dead)return false;
+ if(gancho('sinEstado',m,k,por))return false;   // Flexibilidad, Insomnio, Inmunidad...
  const mayor=!!EST[k];
  if(mayor){if(m.ail)return false}else if(m.vol&&m.vol[k])return false;
  if(INMUNE[k]&&m.types.some(t=>INMUNE[k].includes(t)))return false;
@@ -80,13 +81,15 @@ function puedeEst(m,k,por){
 function aplicarEst(m,k,por,aviso){
  const E=EST[k]||VOL[k];
  if(!puedeEst(m,k,por)){if(aviso)txt.push({x:m.x,y:m.y-56,s:'No afecta',c:'#e2e8f0',l:1.1,sm:1});return false}
- const l=E.fijo?E.l:E.l*RS(.75,1.25);
+ const l=(E.fijo?E.l:E.l*RS(.75,1.25))*ganchoMul('durEst',m,k);   // Madrugar
  if(EST[k]){m.ail={k,l,t:0,n:0};if(k=='slp'||k=='frz'){m.plan=null;m.lw=0;m.lunge=0}}
  else{(m.vol=m.vol||{})[k]={l,t:0,by:por};if(k=='disable')m.vol[k].i=m.pi}
  txt.push({x:m.x,y:m.y-56,s:'¡'+E.n+'!',c:E.c,l:1.4,sm:1});ring(m.x,m.y,E.c,45,.6);burst(m.x,m.y-10,E.c,10,110,true);
+ if(por&&por!==m)gancho('alEstado',m,k,por);   // Sincronía
  return true;
 }
 function dotDano(m,f,c){
+ if(gancho('sinIndirecto',m))return 0;   // Muro Mágico
  const d=Math.max(1,Math.round(m.max*f));m.hp-=d;
  txt.push({x:m.x+R(-8,8),y:m.y-34,s:'-'+d,c,l:.7,sm:1});burst(m.x,m.y-10,c,3,60,true);
  if(m.hp<=0)debilitar(m,null);
@@ -99,7 +102,7 @@ function tickEst(m,dt){
  const a=m.ail;
  if(a){const E=EST[a.k];a.l-=dt;a.t+=dt;
   if(a.t>=1){a.t-=1;a.n++;
-   if(a.k=='tox')dotDano(m,Math.min(TOX_TOPE,TOX_SUBE*a.n),E.c);else if(E.dot)dotDano(m,E.dot,E.c)}
+   if((a.k=='psn'||a.k=='tox')&&gancho('sinDotVeneno',m)){}else if(a.k=='tox')dotDano(m,Math.min(TOX_TOPE,TOX_SUBE*a.n),E.c);else if(E.dot)dotDano(m,E.dot,E.c)}
   if(!m.dead&&a.l<=0){m.ail=null;txt.push({x:m.x,y:m.y-56,s:a.k=='slp'?'¡Despertó!':a.k=='frz'?'¡Se descongeló!':'¡Se recuperó!',c:'#bbf7d0',l:1.2,sm:1})}
  }
  if(m.dead||!m.vol)return;
@@ -108,7 +111,7 @@ function tickEst(m,dt){
   if(s.t>=1&&(V.dot||V.heal||V.tick)){s.t-=1;
    if(V.tick)stg(m,V.tick);
    if(V.dot&&(k!='nmare'||(m.ail&&m.ail.k=='slp'))){const d=dotDano(m,V.dot,V.c);
-    if(k=='seed'&&s.by&&!s.by.dead&&d>0)curaPS(s.by,d/s.by.max)}
+    if(k=='seed'&&s.by&&!s.by.dead&&d>0){if(gancho('drenajeToxico',m))dotDano(s.by,d/s.by.max,'#a3e635');else curaPS(s.by,d/s.by.max)}}
    if(m.dead)return;
    if(V.heal&&!m.vol.hblock)curaPS(m,V.heal);
   }
@@ -131,15 +134,16 @@ function descongelar(tg,t){
  if(tg.ail&&tg.ail.k=='frz'&&t=='fire'){tg.ail=null;txt.push({x:tg.x,y:tg.y-56,s:'¡Se descongeló!',c:'#fde68a',l:1.2,sm:1})}
 }
 function amedrentar(tg){
- if(tg.dead||tg.sc||tg.lunge>0)return;
+ if(tg.dead||tg.sc||tg.lunge>0||gancho('sinAmedrentar',tg))return;   // Foco Interno
  tg.freeze=Math.max(tg.freeze||0,.6);tg.plan=null;tg.lw=0;
  txt.push({x:tg.x,y:tg.y-56,s:'¡Retrocede!',c:'#e2e8f0',l:1,sm:1});
+ gancho('alAmedrentar',tg);   // Impasible
 }
 // Efectos secundarios de un ataque con daño (s = mv.sec, d = daño hecho, primero = golpe principal del ataque)
 function secundarios(s,o,tg,d,primero){
  if(s.dr&&!o.dead){
-  if(s.dr>0)curaPS(o,d*s.dr/100/o.max);
-  else{dotDano(o,Math.max(1,Math.round(d*-s.dr/100))/o.max,'#f87171');txt.push({x:o.x,y:o.y-56,s:'¡Retroceso!',c:'#f87171',l:1,sm:1})}
+  if(s.dr>0){if(gancho('drenajeToxico',tg))dotDano(o,d*s.dr/100/o.max,'#a3e635');else curaPS(o,d*s.dr/100/o.max)}   // Viscosidad Lodosa invierte el drenaje
+  else if(!gancho('sinRetroceso',o)){dotDano(o,Math.max(1,Math.round(d*-s.dr/100))/o.max,'#f87171');txt.push({x:o.x,y:o.y-56,s:'¡Retroceso!',c:'#f87171',l:1,sm:1})}
  }
  if(!primero)return;
  if(s.x)switch(s.x){   // efectos extra por nombre (SEC_X)

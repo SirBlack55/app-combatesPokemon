@@ -52,7 +52,7 @@ const HabCarta=(()=>{
  }
  // Objetos nuevos → inventario (nombre e icono) y objetos de prueba
  if(typeof OBJETOS!=='undefined'&&typeof OBJ_EQ!=='undefined')for(const k of Object.keys(OBJ_EQ))if(!OBJETOS[k])OBJETOS[k]=[OBJ_EQ[k].n,OBJ_EQ[k].i||'📦'];
- if(typeof OBJETOS_PRUEBA!=='undefined')Object.assign(OBJETOS_PRUEBA,{'leftovers':2,'life-orb':2,'sitrus-berry':5});
+ if(typeof OBJETOS_PRUEBA!=='undefined')Object.assign(OBJETOS_PRUEBA,{'leftovers':2,'life-orb':2,'sitrus-berry':5,'choice-band':1,'choice-scarf':1,'focus-sash':2,'rocky-helmet':1,'shell-bell':1,'lum-berry':3,'occa-berry':2,'oran-berry':3,'expert-belt':1,'assault-vest':1});
  // Cartas de prueba con habilidad y objeto: [especie, nivel, arquetipo, género, estrellas, habilidad, objeto]
  const CARTAS_PRUEBA=[[130,30,'fisico',null,0,'intimidate','leftovers'],[92,30,'especial',null,0,'levitate','life-orb'],[291,30,'fisico',null,0,'speed-boost','sitrus-berry']];
  return{P_OCULTA,opciones,quitar,sortear,slotDe,porSlot,dar,alEvolucionar,infoHab,infoObj,objetosEquipables,equipar,CARTAS_PRUEBA};

@@ -151,7 +151,7 @@ X('splash celebrate hold-hands happy-hour','Pero no pasa nada',{nada:1});
 X('after-you ally-switch spotlight follow-me rage-powder helping-hand instruct quash coaching decorate fairy-lock','Solo tiene sentido en combates dobles',{nada:1});
 X('quick-guard wide-guard mat-block crafty-shield','Protección de grupo: no aplica en 1 contra 1',{nada:1});
 X('trick switcheroo bestow embargo magic-room imprison snatch','Depende de objetos o habilidades: aún no existen',{nada:1});
-X('metronome assist nature-power me-first sleep-talk transform conversion-2 gravity','Depende de otros ataques o formas: aún sin implementar',{nada:1});
+X('metronome assist nature-power me-first sleep-talk conversion-2 gravity','Depende de otros ataques o formas: aún sin implementar',{nada:1});
 
 // ---------- Tanda 4: lo que salía en la auditoría ----------
 // Dos turnos: k:'carga' (se concentra ~0,9 s y luego ataca) · k:'inv' (desaparece ~0,8 s y luego ataca; v = dónde se esconde)
@@ -232,5 +232,11 @@ X('swallow','Gasta la reserva y cura 25/50/100% de PS',{swl:1});
 X('geomancy','+2 At. Esp., Def. Esp. y Velocidad',{s:{spa:2,spd:2,spe:2}});
 X('tidy-up','+1 Ataque y Velocidad; quita las trampas',{s:{atk:1,spe:1},ha:'limpia'});
 X('strength-sap','Rival −1 Ataque y se cura',{o:{atk:-1},h:.3,of:1});
-X('worry-seed simple-beam entrainment gastro-acid skill-swap role-play doodle','Depende de habilidades: aún no existen',{nada:1});
+X('gastro-acid','Anula la habilidad del rival',{hb:'off',of:1});
+X('skill-swap','Intercambia su habilidad con la del rival',{hb:'swap',of:1});
+X('role-play doodle','Copia la habilidad del rival',{hb:'copy',of:1});
+X('entrainment','El rival adopta la habilidad del atacante',{hb:'give',of:1});
+X('worry-seed','La habilidad del rival pasa a ser Insomnio',{hb:'set:insomnia',of:1});
+X('simple-beam','La habilidad del rival pasa a ser Simple',{hb:'set:simple',of:1});
+X('transform','Se transforma en el rival (tipos, estadísticas, ataques y habilidad)',{tf:1,of:1});
 X('recycle corrosive-gas teatime powder electrify grudge healing-wish lunar-dance shed-tail max-guard ion-deluge aromatic-mist','Depende de objetos, habilidades o aliados: aún sin implementar',{nada:1});

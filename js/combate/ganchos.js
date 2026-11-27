@@ -14,6 +14,15 @@
 //   rompible:1 (campo de la entrada) = Rompemoldes la ignora · rompe:1 = la entrada tiene Rompemoldes
 //   absorbe(m,o,t,e,prim)       true: el ataque no le hace daño (la habilidad aplica su efecto, p. ej. curar, solo si prim) · bloqMove(m,o,p): true si anula un ataque de estado ofensivo
 //   aguanta(m,o,d)              true: sobrevive con 1 PS a un golpe que lo mataría (Robustez) · sinClimaDano(m,cl): true si no le hiere ese clima (sand/hail)
+//   alDerrotar(o,tg) / alMorir(m,por)  al derrotar a un rival / al ser derrotado por un ataque (por = el atacante)
+//   sinContacto(o): true = sus ataques no hacen contacto · critSeguro(o,tg): true = su golpe es crítico seguro · sinPolvo(m): true = inmune a Espora Efecto y similares
+//   cancelaAtaque(m,p): true = se salta ese ataque (Holgazán) · sinDotVeneno(m): true = el veneno no le hiere (Antídoto) · alComerBaya(m): tras comerse una baya
+//   sinEstado(m,k,por): true = inmune a ese estado (par brn psn tox slp frz cnf inf yawn taunt torment encore disable hblock) · alEstado(m,k,por): tras recibirlo · durEst(m,k): multiplica su duración
+//   cambioStat(m,v,k,ajeno): devuelve el cambio de estadística final (Respondón, Simple, Cuerpo Puro...); ajeno = lo provoca el rival ('intimidate' = Intimidación) · statBajada(m,k,c): tras una bajada ajena (Competitivo)
+//   reflejaStat(m): true = devuelve las bajadas ajenas · ignoraStg(o,m,k): true = o ignora las etapas de m · ignoraEva(o) / ignoraGhost(o): sus ataques ignoran la evasión / la inmunidad Fantasma
+//   sinIndirecto(m): no sufre daño indirecto (veneno, clima, trampas, retroceso...) · sinRetroceso(o): sin retroceso de sus ataques · drenajeToxico(m): quien le drena pierde PS
+//   sinAmedrentar(m) / alAmedrentar(m) · sinObjeto:1 (campo de la entrada) = sus objetos no funcionan
+//   tipoAtq(m,t,p): devuelve el tipo con el que sale su ataque p (Aerilato, Normalizar, Protean...; el ataque marcado cv:1 recibe el bonus) · hitsMax(o): sus ataques de varios golpes dan siempre el máximo
 //   statMul(m,k)                número: multiplica su estadística k (atk, def, spa, spd, spe). No debe llamar a stat()
 //   accMul(o,tg,p) / accRec(tg,o,p)   número: multiplica la precisión de sus ataques / de los ataques que recibe
 //   noFalla(m)                  true: sus ataques y los que recibe nunca fallan
@@ -31,11 +40,14 @@ const hayHab=k=>mons.some(x=>!x.dead&&!(x.enter>0)&&x.hab===k&&!x.habOff&&!gasNe
 const gasNeutro=m=>m.hab!=='neutralizing-gas'&&mons.some(x=>x!==m&&!x.dead&&!(x.enter>0)&&x.hab==='neutralizing-gas'&&!x.habOff);
 const climaAnulado=()=>mons.some(m=>!m.dead&&!(m.enter>0)&&!!gancho('anulaClima',m));
 function fuentesH(m){
- const r=[],o=m.obj&&!m.objOff&&typeof OBJ_EQ!=='undefined'&&OBJ_EQ[m.obj];let h=m.hab&&!m.habOff&&typeof HAB!=='undefined'&&HAB[m.hab];
+ const r=[];let o=m.obj&&!m.objOff&&typeof OBJ_EQ!=='undefined'&&OBJ_EQ[m.obj],h=m.hab&&!m.habOff&&typeof HAB!=='undefined'&&HAB[m.hab];
  if(h&&gasNeutro(m))h=null;
  if(h&&h.rompible&&H_ATQ&&H_ATQ!==m&&H_ATQ.side!==m.side&&!H_ATQ.habOff&&typeof HAB!=='undefined'&&HAB[H_ATQ.hab]&&HAB[H_ATQ.hab].rompe&&!gasNeutro(H_ATQ))h=null;
+ if(h&&h.sinObjeto)o=null;   // Zoquete: sus objetos no funcionan
  if(h)r.push(h);if(o)r.push(o);return r;
 }
+// Etapa de una estadística tal como cuenta en este golpe: Ignorante hace que el rival ignore los cambios del dueño
+function stgEf(m,k){const s=m.stg[k]||0;if(!s||!H_ATQ)return s;const o=H_ATQ===m?rivalDe(m):H_ATQ;return o&&o!==m&&gancho('ignoraStg',o,m,k)?0:s}
 // Llama a todas las fuentes y devuelve el primer valor verdadero
 function gancho(k,m,...a){let r;for(const E of fuentesH(m)){const f=E[k];if(f){const v=f.call(E,m,...a);if(v&&!r)r=v}}return r}
 // Producto de los números que devuelven las fuentes (1 si no hay)
@@ -52,7 +64,7 @@ function conAtq(o,f){const q=H_ATQ;H_ATQ=o;try{return f()}finally{H_ATQ=q}}
 // ¿Es un ataque de estado que actúa sobre el rival?
 const ofensivoSt=p=>!!(p.ef&&(p.ef.o||(p.ef.a&&!p.ef.a.yo)||p.ef.of||p.ef.ty||p.ef.ta||p.ef.sp));
 const mulDano=(o,tg,t,cat,dm)=>ganchoMul('danoMul',o,tg,t,cat,dm)*ganchoMul('danoRec',tg,o,t,cat,dm)*auraDano(o,tg,t,cat,dm);
-function gastarObj(m){const k=m.obj;m.obj=null;if(m.u){m.u.obj=null;m.u.objGastado=1}return k}
+function gastarObj(m){const k=m.obj;m.objGastadoK=k;m.obj=null;if(m.u){m.u.obj=null;m.u.objGastado=1}return k}
 // Cada paso de simulación (lo llama upM, tras tickEst)
 function tickGanchos(m,dt){
  if(!m.hkE){const r=gancho('entra',m);if(r!=='espera')m.hkE=1}

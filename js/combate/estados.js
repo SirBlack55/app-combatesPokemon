@@ -1,7 +1,14 @@
 // Ataques de estado: curar, estadísticas, estados alterados, protecciones, campo, sustituto y demás efectos (ver EFX en datos/ataques-especiales.js).
 function stg(x,o,ajeno){const N={atk:'Ataque',def:'Defensa',spa:'At. Esp.',spd:'Def. Esp.',spe:'Velocidad',acc:'Precisión',eva:'Evasión'};let j=0;
  if(ajeno&&x.vol&&x.vol.mist){const q={};for(const k in o)if(o[k]>0)q[k]=o[k];if(!Object.keys(q).length){txt.push({x:x.x,y:x.y-46,s:'¡Neblina!',c:'#e0f2fe',l:1.2,sm:1});return}o=q}
- for(const k in o){const b=x.stg[k]||0,n=Math.max(-6,Math.min(6,b+o[k])),up=o[k]>0;x.stg[k]=n;txt.push({x:x.x,y:x.y-46-j++*13,s:n!=b?N[k]+(up?' ▲':' ▼').repeat(Math.abs(o[k])):N[k]+(up?' al máximo':' al mínimo'),c:up?'#fde047':'#fca5a5',l:1.5,sm:1});ring(x.x,x.y,up?'#fde047':'#f87171',45,.6)}}
+ for(const k of Object.keys(o)){
+  // ajeno = true (o 'intimidate' / 'reflejo') cuando el cambio lo provoca el rival. Habilidades: Respondón, Simple, Cuerpo Puro, Corte Fuerte, Intrépido...
+  let c=ganchoVal('cambioStat',x,o[k],k,ajeno);
+  if(ajeno&&ajeno!=='reflejo'&&c<0&&gancho('reflejaStat',x)){const r=rivalDe(x);if(r){txt.push({x:x.x,y:x.y-46-j++*13,s:'¡Coraza Reflejo!',c:'#e2e8f0',l:1.2,sm:1});stg(r,{[k]:c},'reflejo')}continue}
+  if(!c){if(o[k]!==0)txt.push({x:x.x,y:x.y-46-j++*13,s:'¡'+N[k]+(o[k]<0?' no baja!':' no cambia!'),c:'#e2e8f0',l:1.2,sm:1});continue}
+  const b=x.stg[k]||0,n=Math.max(-6,Math.min(6,b+c)),up=c>0;x.stg[k]=n;txt.push({x:x.x,y:x.y-46-j++*13,s:n!=b?N[k]+(up?' ▲':' ▼').repeat(Math.abs(c)):N[k]+(up?' al máximo':' al mínimo'),c:up?'#fde047':'#fca5a5',l:1.5,sm:1});ring(x.x,x.y,up?'#fde047':'#f87171',45,.6);
+  if(ajeno&&c<0&&!x.dead)gancho('statBajada',x,k,c);   // Competitivo, Tenacidad
+ }}
 // Efectos que caen sobre el rival (los devuelve la Capa Mágica; los bloquea el Sustituto)
 // Intercambios y repartos (Cambiacorazón, Cambiadefensa, Psicocambio...)
 function intercambio(m,tg,k){
@@ -23,7 +30,9 @@ function intercambio(m,tg,k){
 function stOfensivo(m,tg,ef){
  if(!tg||tg.dead)return;
  if(tg.vol&&tg.vol.mcoat&&(ef.o||ef.a||(ef.v&&ef.of))){delete tg.vol.mcoat;txt.push({x:tg.x,y:tg.y-56,s:'¡Capa Mágica!',c:'#f0abfc',l:1.2,sm:1});const t=tg;tg=m;m=t}
- if(tg.vol&&tg.vol.sub&&(ef.o||ef.a||ef.v||ef.ty||ef.ta)){fallo(tg,'¡El sustituto lo bloquea!');return}
+ if(tg.vol&&tg.vol.sub&&(ef.o||ef.a||ef.v||ef.ty||ef.ta||ef.hb||ef.tf)){fallo(tg,'¡El sustituto lo bloquea!');return}
+ if(ef.hb)cambioHabilidad(m,tg,ef.hb);   // Gastroácido, Intercambio de Habilidad... (habilidades-raras.js)
+ if(ef.tf)transformar(m,tg);
  if(ef.o)stg(tg,ef.o,true);
  if(ef.a&&!ef.a.yo)aplicarEst(tg,ef.a.k,m,true);
  if(ef.v&&ef.of)for(const k of[].concat(ef.v))aplicarEst(tg,k,m,true);

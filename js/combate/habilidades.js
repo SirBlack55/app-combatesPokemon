@@ -4,7 +4,7 @@ const HAB_CFG={impulsoCada:4};   // Impulso: segundos entre cada subida de Veloc
 const HAB={
  'intimidate':{n:'Intimidación',g:'Al entrar',d:'Al entrar en combate, baja el Ataque del rival.',
   entra(m){const o=rivalDe(m);if(!o)return'espera';
-   txt.push({x:m.x,y:m.y-56,s:'¡Intimidación!',c:'#fbbf24',l:1.2,sm:1});stg(o,{atk:-1},true)}},
+   txt.push({x:m.x,y:m.y-56,s:'¡Intimidación!',c:'#fbbf24',l:1.2,sm:1});stg(o,{atk:-1},'intimidate')}},
  'levitate':{n:'Levitación',g:'Inmunidad',d:'Inmune a los ataques de tipo Tierra y a las púas del suelo.',
   inmune(m,t){return t=='ground'}},
  'speed-boost':{n:'Impulso',g:'Periódica',d:'Cada '+HAB_CFG.impulsoCada+' s sube la Velocidad.',

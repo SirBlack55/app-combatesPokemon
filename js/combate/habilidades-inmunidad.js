@@ -1,7 +1,7 @@
 // HABILIDADES · familia INMUNIDAD: absorben o anulan ataques (gancho absorbe/bloqMove/aguanta) y el daño del clima. Se registran en HAB.
 // Absorber = el ataque no hace daño y la habilidad aplica su efecto UNA vez por ataque (no en cada golpe de los de varios golpes).
 // Valores (como los juegos): curar 25 % de los PS, +1 a la estadística (Cuerpo Horneado +2), Llamarada +50 % al fuego mientras siga en combate.
-const ABS_CURA=.25,CLIMA_PS=.02;   // Piel Seca: % de PS por segundo con lluvia (cura) o sol (hiere)
+const ABS_CURA=.25,CLIMA_PS=.031;   // Piel Seca: % de PS por segundo con lluvia (cura) o sol (hiere)
 const L_POLVO=['cotton-spore','poison-powder','powder','rage-powder','sleep-powder','spore','stun-spore','magic-powder'];
 const L_BOLA=['acid-spray','aura-sphere','barrage','beak-blast','bullet-seed','egg-bomb','electro-ball','energy-ball','focus-blast','gyro-ball','ice-ball','magnet-bomb','mist-ball','mud-bomb','octazooka','pollen-puff','pyro-ball','rock-blast','rock-wrecker','searing-shot','seed-bomb','shadow-ball','sludge-bomb','syrup-bomb','weather-ball','zap-cannon'];
 const L_VIENTO=['air-cutter','bleakwind-storm','blizzard','fairy-wind','gust','heat-wave','hurricane','icy-wind','petal-blizzard','sandsear-storm','springtide-storm','twister','whirlwind','wildbolt-storm'];
@@ -18,7 +18,7 @@ Object.assign(HAB,{
  'water-absorb':hAbsorbe('Absorbe Agua','water','Los ataques de Agua no le hacen daño: le curan el 25 % de sus PS.',curaAbs),
  'volt-absorb':hAbsorbe('Absorbe Elec','elec','Los ataques Eléctricos no le hacen daño: le curan el 25 % de sus PS.',curaAbs),
  'earth-eater':hAbsorbe('Geofagia','ground','Los ataques de Tierra no le hacen daño: le curan el 25 % de sus PS.',curaAbs),
- 'dry-skin':hAbsorbe('Piel Seca','water','Los ataques de Agua le curan el 25 %, los de Fuego le hacen +25 %; con lluvia se cura y con sol se hiere.',curaAbs,
+ 'dry-skin':hAbsorbe('Piel Seca','water','Los ataques de Agua le curan el 25 %, los de Fuego le hacen +25 %; con lluvia se cura y con sol se hiere (3 % por segundo).',curaAbs,
   {danoRec(tg,o,t){return t==='fire'?1.25:1},
    seg(m){if(campo.cl&&campo.cl.k==='rain'&&m.hp<m.max&&!(m.vol&&m.vol.hblock))curaPS(m,CLIMA_PS);else if(campo.cl&&campo.cl.k==='sun')dotDano(m,CLIMA_PS,'#fb923c')}}),
  'motor-drive':hAbsorbe('Electromotor','elec','Los ataques Eléctricos no le hacen daño: sube su Velocidad.',subeAbs({spe:1},'Electromotor')),
@@ -31,7 +31,7 @@ Object.assign(HAB,{
  'wind-rider':hLista2('Surcavientos',L_VIENTO,'Inmune a los ataques de viento: sube su Ataque.',subeAbs({atk:1},'Surcavientos')),
  'soundproof':hLista2('Insonorizar',(typeof SONIDO!=='undefined'?SONIDO:[]),'Inmune a los ataques de sonido.'),
  'bulletproof':hLista2('Antibalas',L_BOLA,'Inmune a los ataques de bola y bomba.'),
- 'overcoat':hLista2('Funda',L_POLVO,'Inmune a los ataques de polvo y al daño de la arena y el granizo.',null,{sinClimaDano(){return true}}),
+ 'overcoat':hLista2('Funda',L_POLVO,'Inmune a los ataques de polvo y al daño de la arena y el granizo.',null,{sinClimaDano(){return true},sinPolvo(){return true}}),
  'good-as-gold':{n:'Cuerpo Áureo',g:'Inmunidad',rompible:1,d:'Los ataques de estado de los rivales no le afectan.',bloqMove(){return true}},
  'wonder-guard':{n:'Superguarda',g:'Inmunidad',d:'Solo le hacen daño los ataques superefectivos.',rompible:1,
   absorbe(m,o,t,e,prim){if(efTipo(t,m)>1)return false;if(prim)msgAbs(m,'No afecta','#e2e8f0');return true}},

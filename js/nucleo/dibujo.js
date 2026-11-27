@@ -26,7 +26,7 @@ function drawProj(e){const t=e.t,rot=e.ph;cx.save();cx.translate(e.x,e.y);cx.glo
  else if(t=='dragon')orb(14,'#a78bfa','rgba(76,29,149,0)');
  else orb(12,'#e5e7eb','rgba(255,255,255,0)');
  cx.restore()}
-function drawApi(m){const o=TY[m.t];if(Math.abs(Math.cos(m.a))>.25)m.fl=Math.cos(m.a)<0;const up=Math.sin(m.a)<-.6,im=up&&o.bi&&o.bi.naturalWidth?o.bi:o.fi,b=Math.abs(Math.sin(m.ph*2))*3,h=86,wl=Math.max(m.lw>0?1-m.lw/.22:0,m.sqz||0),sx0=m.sx==null?1:m.sx;
+function drawApi(m){const o=TY[m.sprT||m.t];if(Math.abs(Math.cos(m.a))>.25)m.fl=Math.cos(m.a)<0;const up=Math.sin(m.a)<-.6,im=up&&o.bi&&o.bi.naturalWidth?o.bi:o.fi,b=Math.abs(Math.sin(m.ph*2))*3,h=86,wl=Math.max(m.lw>0?1-m.lw/.22:0,m.sqz||0),sx0=m.sx==null?1:m.sx;
  m.sx=sx0+(((m.fl&&!up)?-1:1)-sx0)*.3;
  if(m.cast>0){const u=1-m.cast/.3;cx.save();cx.globalCompositeOperation='lighter';cx.globalAlpha=.55;cx.fillStyle=m.castc||'#fff';cx.beginPath();cx.arc(0,-30,12+u*26,0,7);cx.fill();cx.restore()}
  cx.imageSmoothingEnabled=false;if(m.flash>0)cx.filter='brightness(4)';

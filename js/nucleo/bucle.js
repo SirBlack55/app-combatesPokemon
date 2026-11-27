@@ -15,7 +15,7 @@ function step(dt){if(hs>0){hs-=dt;return}T+=dt;if(!over){duelT+=dt;if(duelT>40&&
  for(const t of txt){t.l-=dt;t.y-=25*dt}txt=txt.filter(t=>t.l>0);for(const r of rg)r.l-=dt;rg=rg.filter(r=>r.l>0);for(const q of scars)q.l-=dt;scars=scars.filter(q=>q.l>0);shk=Math.max(0,shk-dt*25);sfl=Math.max(0,sfl-dt*1.5);cz=Math.max(0,cz-dt*.05);dim=Math.max(0,dim-dt*.45);if(bn){bn.l-=dt;if(bn.l<=0)bn=null}
  mons=mons.filter(m=>!m.dead||m.fade>0);
  if(over)return;
- for(let s=0;s<2;s++){const act=mons.some(m=>m.side==s&&!m.dead),nx=team[s].find(u=>!u.used);
+ for(let s=0;s<2;s++){const act=mons.some(m=>m.side==s&&!m.dead),nx=typeof siguienteDe==='function'?siguienteDe(s):team[s].find(u=>!u.used);   // cambios.js elige quién entra
   if(!act&&nx){send[s]-=dt;if(send[s]<=0){spawn(s,nx);send[s]=1.4}}
   else if(!act&&!nx&&!over){over=true;const w=1-s;$('#ban').innerHTML=`🏆<br>¡Gana el Equipo ${w+1} ${w?'🔴':'🔵'}!<div style="margin-top:10px"><button id="rv">Revancha</button> <button id="ch">Cambiar equipos</button></div>`;$('#ban').style.display='flex';log('🏆 Gana el Equipo '+(w+1));if(alTerminarCombate)alTerminarCombate(w)}}}
 const PASO=1/60;let acum=0;

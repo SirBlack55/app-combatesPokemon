@@ -7,6 +7,7 @@ function debilitar(m,por){
  log(por?`${tn(por.t)} derrotó a ${tn(m.t)}`:`${tn(m.t)} se debilitó`);
  burst(m.x,m.y,'#fff',22,200,true);ui();
  if(por&&m.vol&&m.vol.dbond&&!por.dead)debilitar(por,null);   // Mismo Destino
+ if(por&&por!==m){if(!por.dead)gancho('alDerrotar',por,m);gancho('alMorir',m,por)}   // habilidades al derrotar / al ser derrotado
 }
 
 // Daño FIJO del ataque (null = el ataque usa la fórmula normal). o = atacante, tg = rival.

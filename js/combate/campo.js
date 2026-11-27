@@ -6,13 +6,14 @@ const CAMPO_L=15,CLIMA_DOT=.03,TERRENO_CURA=.03;
 const nuevoCampo=()=>({_cl:null,get cl(){return this._cl&&!(typeof climaAnulado==='function'&&climaAnulado())?this._cl:null},set cl(v){this._cl=v},te:null,sa:null,dep:{},haz:[{},{}],tc:0,gp:[]});   // gp = golpes pendientes de los ataques de varios golpes
 var campo=nuevoCampo();
 const salaK=k=>!!(campo.sa&&campo.sa.k==k);
-const NOM_CAMPO={sun:'☀ Sol',rain:'🌧 Lluvia',sand:'🏜 Tormenta de arena',hail:'❄ Granizo',elec:'⚡ Campo eléctrico',leaf:'🌿 Campo de hierba',mist:'🌫 Campo de niebla',psy:'🔮 Campo psíquico',trick:'🔄 Sala Trampa',wonder:'🔀 Sala Extraña'};
+const NOM_CAMPO={delta:'🌬 Ráfaga Delta',sun:'☀ Sol',rain:'🌧 Lluvia',sand:'🏜 Tormenta de arena',hail:'❄ Granizo',elec:'⚡ Campo eléctrico',leaf:'🌿 Campo de hierba',mist:'🌫 Campo de niebla',psy:'🔮 Campo psíquico',trick:'🔄 Sala Trampa',wonder:'🔀 Sala Extraña'};
 // Color de la esfera de cada protección (proteccion.js)
 const PROT_COL={protect:'#38bdf8',endure:'#fbbf24',king:'#e2e8f0',spiky:'#84cc16',bunker:'#c084fc',obstruct:'#f87171',silk:'#f9a8d4',bulwark:'#fb923c'};
 const NOM_HAZ={spikes:'Púas',tspikes:'Púas tóxicas',rocks:'Rocas',web:'Red'};
 
 function fallo(m,s='¡Falló!'){txt.push({x:m.x,y:m.y-46,s,c:'#cbd5e1',l:1,sm:1})}
 function ponerCampo(tipo,k,m){
+ if(tipo==='cl'&&climaExtremoActivo()){fallo(m);return}   // Tierra del Ocaso, Mar del Albor y Ráfaga Delta no se pueden cambiar
  const o=campo[tipo];
  if(o&&o.k==k){fallo(m);return}
  campo[tipo]={k,l:CAMPO_L};
@@ -35,13 +36,14 @@ function aplicaHaz(m){
  if(h.web&&!vuela&&!m.dead)stg(m,{spe:-1});
 }
 // Ataques de varios golpes: el primero lo da hit(); los demás se agendan cada .11 s (nHits sortea cuántos)
-function nHits([mn,mx]){
+function nHits([mn,mx],o){
+ if(o&&gancho('hitsMax',o))return mx;   // Encadenado
  if(mn>=mx)return mn;
  if(mn==2&&mx==5)return pickP([2,3,4,5],[3,3,1,1]);
  return mn+Math.floor(rnd()*(mx-mn+1));
 }
 function agendaHits(o,tg,dm,t,cat,fx){
- const n=nHits(o.last.hits)-1;
+ const n=nHits(o.last.hits,o)-1;
  for(let i=1;i<=n;i++)campo.gp.push({t:.11*i,o,tg,dm:o.last.ramp?dm*(i+1):dm,tt:t,cat,fx,sec:o.last.sec,sty:o.last.sty});
 }
 function tickCampo(dt){
@@ -51,6 +53,7 @@ function tickCampo(dt){
   const listos=c.gp.filter(g=>g.t<=0);c.gp=c.gp.filter(g=>g.t>0);
   for(const g of listos){if(g.tg.dead||g.o.dead)continue;hit(g.tg,g.dm,g.tt,g.o,{cat:g.cat,f:false,mh:1,fx:g.fx,sec:g.sec});vfx(g.tg.x,g.tg.y-20,g.sty,g.tt)}
  }
+ if(c._cl&&c._cl.por&&c._cl.por.dead)c._cl=null;   // el clima extremo acaba cuando se va quien lo puso
  for(const k of['cl','te','sa'])if(c[k]&&(c[k].l-=dt)<=0)c[k]=null;
  for(const k of Object.keys(c.dep))if((c.dep[k]-=dt)<=0)delete c.dep[k];
  c.tc+=dt;
@@ -80,12 +83,13 @@ function accEf(m,tg,p){
  if(gancho('noFalla',m)||gancho('noFalla',tg))return 1e9;
  const c=campo.cl&&campo.cl.k,tr=p.key=='thunder'||p.key=='hurricane';
  if(c=='rain'&&tr||c=='hail'&&p.key=='blizzard')return 1e9;
- const s=Math.max(-6,Math.min(6,(m.stg.acc||0)-(tg.stg.eva||0)));
+ const s=Math.max(-6,Math.min(6,(m.stg.acc||0)-(gancho('ignoraEva',m)?0:(tg.stg.eva||0))));
  return p.acc*(s>=0?(3+s)/3:3/(3-s))*(c=='sun'&&tr?.7:1)*ganchoMul('accMul',m,tg,p)*ganchoMul('accRec',tg,m,p);
 }
 function critP(o,tg,e){
  if(tg.vol&&tg.vol.lucky)return 0;
  if(gancho('sinCrit',tg))return 0;   // Armadura Batalla, Caparazón
+ if(gancho('critSeguro',o,tg))return 1;   // Despiadado
  if(o.lf&&(!e||e.f)){o.lf=0;return 1}
  const et=((o.last&&o.last.cr)||0)+(o.vol&&o.vol.focus?2:0)+ganchoSum('critEt',o);   // etapas de crítico: 0 → 6,25 % · 1 → 12,5 % · 2 → 50 % · 3 → 100 %
  return[.0625,.125,.5,1][Math.min(3,et)];
@@ -93,9 +97,11 @@ function critP(o,tg,e){
 // Efectividad de un tipo contra un luchador, con Levitación (inmune a Tierra) e Identificado (quita inmunidades de Fantasma/Siniestro)
 function efTipo(t,tg){
  const V=tg.vol;let ts=tg.types;
+ if(H_ATQ&&H_ATQ!==tg&&(t=='normal'||t=='fighting')&&gancho('ignoraGhost',H_ATQ))ts=ts.filter(x=>x!='ghost');   // Intrépido, Ojo Mental
  if(V&&V.ident)ts=ts.filter(x=>!((x=='ghost'&&(t=='normal'||t=='fighting'))||(x=='dark'&&t=='psychic')));
  if(V&&V.levit&&t=='ground')return 0;
  if(gancho('inmune',tg,t))return 0;   // habilidades y objetos (Levitación...)
+ if(campo.cl&&campo.cl.k==='delta'&&ts.includes('flying'))return ts.reduce((a,d)=>{const q=(CH[t]||{})[d]??1;return a*(d==='flying'&&q>1?1:q)},1);   // Ráfaga Delta: el tipo Volador pierde sus debilidades
  return tEff(t,ts);
 }
 // Un golpe contra alguien que se protege (hit lo llama y se detiene)
@@ -177,6 +183,8 @@ function wtEfx(m,e,o){
  if(e.stk)return(m.stk||0)<3?.9:0;
  if(e.swl)return m.stk&&fr<.6?2:0;
  if(e.rv)return team[m.side]&&team[m.side].some(u=>u.dead)?1.5:0;
+ if(e.hb){if(!o||m.dead)return 0;const h=e.hb;return h==='off'?(o.hab&&!o.habOff?.8:0):h==='swap'?(m.hab&&o.hab?.5:0):h==='copy'?(o.hab&&o.hab!==m.hab?.7:0):h==='give'?(m.hab&&m.hab!==o.hab?.5:0):(o.hab&&o.hab!==h.slice(4)?.6:0)}
+ if(e.tf)return!o||m.tfDone||o.dead?0:.8;
  return undefined;
 }
 // Dibujo del clima y etiquetas del campo (dibujo.js, al final de draw)
@@ -195,7 +203,7 @@ function dibujaCampo(){
   if(cl=='sun'){const g=cx.createRadialGradient(W-60,30,5,W-60,30,260);g.addColorStop(0,'rgba(255,230,120,.45)');g.addColorStop(1,'rgba(255,200,60,0)');cx.fillStyle=g;cx.fillRect(0,0,W,H)}
  }
  const l=[];
- for(const k of['cl','te','sa'])if(c[k])l.push(NOM_CAMPO[c[k].k]+' '+Math.ceil(c[k].l)+'s');
+ for(const k of['cl','te','sa'])if(c[k])l.push(NOM_CAMPO[c[k].k]+(isFinite(c[k].l)?' '+Math.ceil(c[k].l)+'s':''));
  if(c.dep.water)l.push('Chorro de agua '+Math.ceil(c.dep.water)+'s');if(c.dep.mud)l.push('Chorro de barro '+Math.ceil(c.dep.mud)+'s');
  cx.font='bold 11px system-ui';cx.textAlign='left';cx.lineWidth=3;cx.strokeStyle='rgba(0,0,0,.7)';cx.fillStyle='#fff';
  l.forEach((s,i)=>{cx.strokeText(s,8,16+i*14);cx.fillText(s,8,16+i*14)});
@@ -206,3 +214,7 @@ function dibujaCampo(){
  });
  cx.restore();
 }
+// Clima extremo (Tierra del Ocaso, Mar del Albor, Ráfaga Delta): dura mientras esté quien lo puso y nada lo sustituye
+const climaExtremoActivo=()=>!!(campo._cl&&campo._cl.x&&!(campo._cl.por&&campo._cl.por.dead));
+// Tierra del Ocaso evapora los ataques de Agua; Mar del Albor apaga los de Fuego
+function climaBloquea(t){const c=campo.cl;return!!(c&&c.x&&((c.k==='sun'&&t==='water')||(c.k==='rain'&&t==='fire')))}

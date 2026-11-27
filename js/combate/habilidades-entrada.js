@@ -5,6 +5,7 @@ const DUR_CAMPO_HAB=15,PRESION_CD=1.25;
 const NO_CALCO=['trace','imposter','neutralizing-gas','illusion','disguise','forecast','flower-gift','multitype','stance-change','schooling','zen-mode','power-construct','receiver','power-of-alchemy','as-one-glastrier','as-one-spectrier','commander','protosynthesis','quark-drive','embody-aspect-teal','embody-aspect-hearthflame','embody-aspect-wellspring','embody-aspect-cornerstone'];
 const aviso=(m,s,c)=>txt.push({x:m.x,y:m.y-56,s,c:c||'#fbbf24',l:1.3,sm:1});
 function campoHab(tipo,k,m){   // pone clima o terreno (o renueva su tiempo si ya estaba)
+ if(tipo==='cl'&&climaExtremoActivo())return;
  const o=campo[tipo];campo[tipo]={k,l:DUR_CAMPO_HAB};
  if(!o||o.k!==k){aviso(m,NOM_CAMPO[k]+'!','#fde047');log(NOM_CAMPO[k])}
 }

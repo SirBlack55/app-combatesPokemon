@@ -6,7 +6,7 @@ Cada ataque con animación propia vive en **su propio archivo** dentro de `js/at
 |---|---|
 | `js/ataques/_plantilla.js` | Dos modelos para copiar (no se carga en el juego). |
 | `js/ataques/_ayudas.js` | El registro `CUSTOM` y ayudas compartidas: `hpos`, `feathers`, `wind`, `scr`. |
-| `js/ataques/vuelo.js`, `hidrobomba.js`, `hiperrayo.js`, `trueno.js`, `rayo.js`, `gigaimpacto.js`, `cometa-draco.js` | Los ataques ya hechos. |
+| `js/ataques/vuelo.js`, `hidrobomba.js`, `hiperrayo.js`, `trueno.js`, `rayo.js`, `gigaimpacto.js`, `cometa-draco.js`, `lanzallamas.js`, `shadow-ball.js` | Los ataques ya hechos. Lanzallamas prueba una llamarada continua; Bola Sombra prueba una esfera oscura con aura y remolinos violetas. |
 | `js/datos/conversor.js` | Convierte un ataque de la PokéAPI al juego y le añade tus datos de `mv`. |
 | `js/combate/ataque.js` (`atk`) | Lanza tu ataque (`CUSTOM[p.cu].start`). |
 | `js/combate/movimiento.js` (`upM`) | Ejecuta tu guion `run` en cada paso. |
