@@ -18,7 +18,7 @@ const POT_CONDICIONAL=['weather-ball','hex','venoshock','facade','brine','acroba
 const REPITE_TURNOS=['outrage','thrash','petal-dance','uproar','rollout','ice-ball','raging-fury','rage'];
 const EFECTO_EXTRA=['rapid-spin','mortal-spin','brick-break','psychic-fangs','raging-bull','clear-smog','smack-down','thousand-arrows','sparkling-aria','tidy-up','steel-roller','ice-spinner'];
 // Se pueden usar, pero el simulador no tiene la condición (objetos, aliados, formas): se queda la potencia/efecto base
-const APROX=['covet','thief','round','fusion-flare','fusion-bolt','pursuit','poltergeist','relic-song','tera-starstorm','supercell-slam'];
+const APROX=['tera-starstorm'];   // pendiente de Tera (Terapagos)
 const LISTAS=[
  ['dos','Dos turnos (cargan o son invulnerables en el primero)',DOS_TURNOS],
  ['otra','Daño con otra estadística (p. ej. ataca con Def. en vez de Def. Esp.)',OTRA_ESTAD],

@@ -6,7 +6,9 @@ const OBJ_CFG4={roca:10,refleluz:1.6,garra:1.6,raiz:1.3,amedrenta:.1,cola:1.25,g
  zoom:1.2,pegajosas:.031,zumo:{u:.5,f:.2},tabla:1.2};
 const avisoX=(m,s,c)=>txt.push({x:m.x,y:m.y-56,s,c:c||'#fde68a',l:1.3,sm:1});
 // Número de especie de un luchador (simulador: clave 'p25' · gacha/eventos: se saca del sprite)
-function especieDe(m){if(!m)return 0;const t=m.t;let r=/^p(\d+)$/.exec(t);if(r)return+r[1];const I=TY[t]&&TY[t].img;r=I&&/\/(\d+)\.(png|gif)/.exec(I);return r?+r[1]:0}
+// idPoke = número del Pokémon concreto (incluye formas: 10147 Magearna Color Original) · especieDe = número de su especie (801)
+function idPoke(m){if(!m)return 0;const y=TY[m.t];if(y&&y.idp)return y.idp;const t=m.t;let r=/^p(\d+)$/.exec(t);if(r)return+r[1];const I=y&&y.img;r=I&&/\/(\d+)\.(png|gif)/.exec(I);return r?+r[1]:0}
+function especieDe(m){const y=m&&TY[m.t];return y&&y.esp||idPoke(m)}
 const deEspecie=(m,...ids)=>ids.includes(especieDe(m));
 
 // ---- Clima y pantallas más largos ----

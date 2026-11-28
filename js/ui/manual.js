@@ -26,7 +26,9 @@ function puedeUsar(m,i){const v=m.mv[i];if(!v)return'—';
  if(m.pi!=null&&(V.encore||V.furia)&&i!==m.pi)return'Solo puede repetir';
  if(V.sil&&typeof SONIDO!=='undefined'&&SONIDO.includes(v.key))return'Silenciado';
  if(V.disable&&V.disable.i===i)return'Anulado';
+ if(V.sellar&&V.sellar.keys&&V.sellar.keys.includes(v.key))return'Sellado';   // Sellar (ataques-restantes.js)
  if(V.taunt&&v.cat==='sta')return'Provocado';
+ if(v.key==='sleep-talk'&&!(m.ail&&m.ail.k==='slp'))return'Solo dormido';
  if(v.fx&&v.fx.k==='ultimo'&&!m.mv.every((x,j)=>j===i||(m.us&&m.us[j])))return'Usa antes los demás';
  if(m.elegI!=null&&m.elegI!==i&&gancho('elegido',m))return'Bloqueado por el objeto';
  return true;
@@ -48,8 +50,8 @@ function upJugador(m,dt){const SP=m.spd*mult(m.stg.spe)*estMul(m,'spe')*(m.vol&&
  if(m.sc){scr(m,dt);return}
  if(m.freeze>0){m.freeze-=dt;if(m.freeze>.35&&Math.random()<.5)m.flash=.06;if(m.tg)m.a=turn(m.a,Math.atan2(m.tg.y-m.y,m.tg.x-m.x),dt*8);return}
  if(m.lw>0){m.lw-=dt;m.a=turn(m.a,m.la,dt*12);if(m.lw<=0)m.lunge=.3;return}
- if(m.ail&&(m.ail.k=='slp'||m.ail.k=='frz')){m.plan=null;return}
  if(!m.tg||m.tg.dead||m.tg.enter>0)m.tg=mons.find(o=>o.side!==m.side&&!o.dead&&!(o.enter>0))||null;
+ if(m.ail&&(m.ail.k=='slp'||m.ail.k=='frz')){if(m.ail.k=='slp'&&m.plan&&m.plan.key==='sleep-talk'&&m.cd<=0&&m.tg)atk(m);else m.plan=null;return}   // dormido: solo Sonámbulo
  const J=dirJugador(),t=m.tg;let vx=0,vy=0,face=null;
  if(m.lunge>0){m.lunge-=dt;trail(m.x,m.y-20,TCOL[m.plan&&m.plan.t]||'#fff',7,1,'c');m.a=m.la;vx=Math.cos(m.la)*560;vy=Math.sin(m.la)*560;
   if(t&&!t.dead&&!m.lhit&&Math.hypot(t.x-m.x,t.y-m.y)<30){m.lhit=true;hit(t,m.plan?m.plan.p:38,m.plan?m.plan.t:'normal',m,null);vfx(t.x,t.y,m.plan&&m.plan.sty,m.plan&&m.plan.t)}
